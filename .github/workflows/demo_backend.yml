@@ -1,0 +1,21 @@
+name: Build and Deploy Backend API to demo environment
+
+on:
+  push:
+
+jobs:
+  build-backend-api:
+    uses: ./.github/workflows/common_backend.yml
+    with:
+      WORKING_DIRECTORY_API: app/backend
+      ACR: craitour2025demoeastus001.azurecr.io
+      IMAGE_NAME_API: 'backend-api'
+      TAG: ${{ github.sha }}
+      CONTAINER_APP_NAME: 'backend-api'
+      RESOURCE_GROUP: 'rg-aitour-2025-demo-eastus-001'
+      REGION: 'eastus'
+    secrets:
+      ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
+      ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+      PROJECT_CONNECTION_STRING: ${{ secrets.PROJECT_CONNECTION_STRING }}

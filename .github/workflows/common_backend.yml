@@ -1,0 +1,98 @@
+name: Build and Deploy Backend API
+
+on:
+  workflow_call:
+    inputs:
+      WORKING_DIRECTORY_API:
+        required: true
+        type: string
+      ACR:
+        required: true
+        type: string
+      IMAGE_NAME_API:
+        required: true
+        type: string
+      TAG:
+        required: true
+        type: string
+      CONTAINER_APP_NAME:
+        required: true
+        type: string
+      RESOURCE_GROUP:
+        required: true
+        type: string
+      REGION:
+        required: true
+        type: string
+    secrets:
+      ACR_USERNAME:
+        required: true
+      ACR_PASSWORD:
+        required: true
+      AZURE_CREDENTIALS:
+        required: true
+      PROJECT_CONNECTION_STRING:
+        required: true
+  
+env:
+  FULL_IMAGE_NAME_API: ${{ inputs.ACR }}/${{ inputs.IMAGE_NAME_API }}:${{ inputs.TAG }}
+  PORT: 8000
+  INGRESS: external
+
+jobs:
+  build-app:
+    name: Build app and push docker image to Azure Container Registry
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: checkout
+        name: Checkout GitHub repository
+        uses: actions/checkout@v3
+
+      - id: login-acr
+        name: Log in Azure Container Registry (ACR)
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ inputs.ACR }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - id: build-image-api
+        name: Build docker image
+        run: |
+          docker build . -t ${{ env.FULL_IMAGE_NAME_API }}
+        working-directory: ${{ inputs.WORKING_DIRECTORY_API }}
+
+      - id: push-image-api
+        name: Push docker image to ACR
+        run: |
+          docker push ${{ env.FULL_IMAGE_NAME_API }}
+        working-directory: ${{ inputs.WORKING_DIRECTORY_API }}
+
+  deploy-app:
+    name: Deploy app to Azure App Service
+    runs-on: ubuntu-latest
+    needs: build-app
+
+    steps:
+      - name: Checkout GitHub repository
+        uses: actions/checkout@v3
+
+      - id: login-azure
+        name: Log in Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy API image To Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          containerAppName: ${{ inputs.CONTAINER_APP_NAME }}
+          resourceGroup: ${{ inputs.RESOURCE_GROUP }}
+          imageToDeploy: ${{ env.FULL_IMAGE_NAME_API }}
+          targetPort: ${{ env.PORT }}
+          ingress: ${{ env.INGRESS }}
+
+      - name: Update environment variables for Azure Container Apps
+        run: |
+          az containerapp update --name ${{ inputs.CONTAINER_APP_NAME }} --resource-group ${{ inputs.RESOURCE_GROUP }} --container-name ${{ inputs.CONTAINER_APP_NAME }} --set-env-vars "PROJECT_CONNECTION_STRING=${{ secrets.PROJECT_CONNECTION_STRING }}"
