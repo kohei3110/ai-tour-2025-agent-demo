@@ -2,6 +2,8 @@ name: Build and Deploy Backend API to demo environment
 
 on:
   push:
+    paths:
+      - 'app/backend/**'
 
 jobs:
   build-backend-api:
