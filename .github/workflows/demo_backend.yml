@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'app/backend/**'
+      - '.github/workflows/**'
 
 jobs:
   build-backend-api:
