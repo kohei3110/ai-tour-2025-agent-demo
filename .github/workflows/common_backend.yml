@@ -91,11 +91,13 @@ jobs:
             containers:
             - image: ${{ env.FULL_IMAGE_NAME_API }}
               name: ${{ inputs.IMAGE_NAME_API }}
-              volumeMounts:
-              - mountPath: "/data"
-                volumeName: emptydata
-              - mountPath: "/files"
-                volumeName: files
+              probes:
+              - type: Liveness
+                httpGet:
+                  path: "/api/health"
+                  port: ${{ env.PORT }}
+                initialDelaySeconds: 10
+                periodSeconds: 10
               resources:
                 cpu: 1
                 memory: 1Gi

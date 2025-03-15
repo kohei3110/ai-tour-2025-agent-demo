@@ -9,7 +9,7 @@ router = APIRouter()
 
 
 
-@router.get("/health")
+@router.get("/api/health")
 def get_health():
     """
     ヘルスチェックエンドポイント。
