@@ -20,7 +20,7 @@ def get_health():
     return {"status": "ok"}
 
 
-@router.post("/prompt")
+@router.post("/chat")
 def post_assistant_manager_service(
     request: MessageRequest, 
     assistant_manager_service: AssistantManagerService = Depends(lambda: assistant_manager_service)
