@@ -86,6 +86,7 @@ jobs:
 
       - name: Generate template.yml with dynamic GIT_SHA
         run: |
+          mkdir -p ${{ inputs.WORKING_DIRECTORY_API }}/config/containerapps
           cat <<EOF > ${{ inputs.WORKING_DIRECTORY_API }}/config/containerapps/template.yml
           template:
             containers:
