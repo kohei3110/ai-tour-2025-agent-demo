@@ -60,7 +60,7 @@ async def post_assistant_manager_service(
         system_message="You are a subsidies expert, help me use tools to find relevant knowledge",
     )
     user_proxy_agent = UserProxyAgent("user_proxy_agent")
-    team = RoundRobinGroupChat([bing_search_agent, subsides_agent, user_proxy_agent], max_turns=2)
+    team = RoundRobinGroupChat([bing_search_agent, subsides_agent, user_proxy_agent], max_turns=10)
     try:
         response = await team.run(task=user_message)
         print(response)
