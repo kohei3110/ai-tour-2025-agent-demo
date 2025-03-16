@@ -48,16 +48,56 @@ async def post_assistant_manager_service(
         azure_endpoint="https://agent-ai-serviceslbiu.openai.azure.com/",
         azure_ad_token_provider=token_provider
     )
+    
+    # Define proper tool schemas for the agents
+    web_search_tool = {
+        "type": "function",
+        "function": {
+            "name": "web_ai_agent",
+            "description": "Search the web for information using Bing",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_message": {
+                        "type": "string",
+                        "description": "The search query or message from the user"
+                    }
+                },
+                "required": ["user_message"]
+            }
+        }
+    }
+    
+    subsidies_tool = {
+        "type": "function",
+        "function": {
+            "name": "subsidies_agent",
+            "description": "Search for subsidy information",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_message": {
+                        "type": "string",
+                        "description": "The search query or message from the user"
+                    }
+                },
+                "required": ["user_message"]
+            }
+        }
+    }
+    
     bing_search_agent = AssistantAgent(
         name="bing_search_agent",
         model_client=az_model_client,
-        tools=[assistant_manager_service.web_ai_agent],
+        tools=[web_search_tool],
+        function_map={"web_ai_agent": assistant_manager_service.web_ai_agent},
         system_message="You are a search expert, help me use tools to find relevant knowledge",
     )
     subsides_agent = AssistantAgent(
         name="subsidies_agent",
         model_client=az_model_client,
-        tools=[assistant_manager_service.subsidies_agent],
+        tools=[subsidies_tool],
+        function_map={"subsidies_agent": assistant_manager_service.subsidies_agent},
         system_message="You are a subsidies expert, help me use tools to find relevant knowledge",
     )
         
