@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from autogen_agentchat.agents import AssistantAgent
+from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -59,8 +59,12 @@ def post_assistant_manager_service(
         tools=[assistant_manager_service.subsidies_agent],
         system_message="You are a subsidies expert, help me use tools to find relevant knowledge",
     )
-    reflection_team = RoundRobinGroupChat(
-        [bing_search_agent, subsides_agent],
-        max_turns=3,
-    )
-    return reflection_team.run(user_message)
+    user_proxy_agent = UserProxyAgent("user_proxy_agent")
+    team = RoundRobinGroupChat([bing_search_agent, subsides_agent, user_proxy_agent], max_turns=2)
+    try:
+        response = team.run(task=user_message)
+        print(response)
+        return response
+    except Exception as e:
+        response = {"error": str(e)}
+        raise e
