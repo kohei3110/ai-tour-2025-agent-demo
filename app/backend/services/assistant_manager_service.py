@@ -24,10 +24,7 @@ class AssistantManagerService:
         )
         bing_grounding_tool: BingGroundingTool = create_bing_grounding_tool(connection_id=bing_grounding_connection.id)
 
-        openapi_tool: OpenApiTool = create_openapi_tool("../tools/actions/swagger_subsidies.json")
-
         toolset.add(bing_grounding_tool)
-        toolset.add(openapi_tool)
 
         thread = self.project_client.agents.create_thread()
         agent: Agent = self.project_client.agents.create_agent(
