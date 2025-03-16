@@ -5,8 +5,9 @@ import re
 from typing import Any, Callable, Set
 from urllib.parse import parse_qs, unquote, urlparse
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import Agent, AgentThread, BingGroundingTool, ConnectionProperties, RequiredFunctionToolCall, ToolOutput, ToolSet, RunStatus, MessageRole, MessageTextContent, FunctionTool
+from azure.ai.projects.models import Agent, AgentThread, BingGroundingTool, ConnectionProperties, RequiredFunctionToolCall, ToolOutput, ToolSet, RunStatus, MessageRole, MessageTextContent, OpenApiTool
 
+from tools.actions.swagger_spec_tool import create_openapi_tool
 from tools.knowledge.bing_grounding_tool import create_bing_grounding_tool
 
 class AssistantManagerService:
@@ -23,15 +24,19 @@ class AssistantManagerService:
         )
         bing_grounding_tool: BingGroundingTool = create_bing_grounding_tool(connection_id=bing_grounding_connection.id)
 
+        openapi_tool: OpenApiTool = create_openapi_tool("../tools/actions/swagger_subsidies.json")
+
         toolset.add(bing_grounding_tool)
+        toolset.add(openapi_tool)
 
         thread = self.project_client.agents.create_thread()
         agent: Agent = self.project_client.agents.create_agent(
             model="gpt-35-turbo",
             name="Assistant Manager",
             instructions="""
-            あなたは最新情報検索を支援するためのアシスタントです。
+            あなたは補助金情報検索を支援するためのアシスタントです。必要に応じて、Bing Grounding ツールを使用して最新情報を取得します。
             あなたは以下の業務を遂行します。
+            - 入力されたキーワードをもとに、補助金情報を検索します。補助金情報は、補助金検索ツールを使用して取得します。
             - 入力されたキーワードをもとに、最新情報を検索します。最新情報を取得するために Bing Grounding を使用します。
 
             #制約事項
