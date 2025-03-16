@@ -33,6 +33,12 @@ on:
         required: true
       PROJECT_CONNECTION_STRING:
         required: true
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
   
 env:
   FULL_IMAGE_NAME_API: ${{ inputs.ACR }}/${{ inputs.IMAGE_NAME_API }}:${{ inputs.TAG }}
