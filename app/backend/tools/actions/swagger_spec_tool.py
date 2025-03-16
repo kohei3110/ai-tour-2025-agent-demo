@@ -1,12 +1,10 @@
-from azure.ai.projects.models import OpenApiAnonymousAuthDetails, OpenApiTool
+from azure.ai.projects.models import OpenApiTool, OpenApiAnonymousAuthDetails
 
-
-def create_subsidies_tool(openapi_spec):
+def create_subsidies_tool(openapi_spec) -> OpenApiTool:
     auth = OpenApiAnonymousAuthDetails()
-    subsidies_tool = OpenApiTool(
-        name="get_subsidies", 
-        spec=openapi_spec, 
-        description="Search subsidies with conditions", 
+    return OpenApiTool(
+        name="subsidies_api",
+        description="API for accessing subsidy information",
+        spec=openapi_spec,
         auth=auth
     )
-    return subsidies_tool
