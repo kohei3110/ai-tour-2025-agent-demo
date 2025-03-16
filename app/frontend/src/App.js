@@ -28,11 +28,12 @@ function App() {
       // APIサービスを使用してメッセージを送信
       const data = await sendChatMessage(input);
       
-      // アシスタントの返信をチャットに追加（引用ソースも含める）
+      // アシスタントの返信をチャットに追加（引用ソースとクエリも含める）
       const assistantMessage = { 
         role: 'assistant', 
         content: data.response,
-        sources: data.sources // 引用ソースを保存
+        sources: data.sources, // 引用ソース
+        query: data.query // 検索クエリ
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
     } catch (error) {
@@ -66,21 +67,37 @@ function App() {
             >
               <div className="message-content">{message.content}</div>
               
-              {/* 引用ソースがある場合に表示 */}
-              {message.sources && message.sources.length > 0 && (
-                <div className="message-sources">
-                  <p className="sources-title">引用ソース:</p>
-                  <ul className="sources-list">
-                    {message.sources.map((source, sourceIndex) => (
-                      <li key={sourceIndex}>
-                        <a href={source} target="_blank" rel="noopener noreferrer">
-                          {source}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <div className="message-references">
+                {/* 引用ソースがある場合に表示 */}
+                {message.sources && message.sources.length > 0 && (
+                  <div className="message-sources">
+                    <p className="sources-title">引用ソース:</p>
+                    <ul className="sources-list">
+                      {message.sources.map((source, sourceIndex) => (
+                        <li key={sourceIndex}>
+                          <a href={source} target="_blank" rel="noopener noreferrer">
+                            {source}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {/* 検索クエリがある場合に表示 */}
+                {message.query && (
+                  <div className="search-query">
+                    <a 
+                      href={`https://www.bing.com/search?q=${encodeURIComponent(message.query)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="bing-search-link"
+                    >
+                      Bingで「{message.query}」を検索
+                    </a>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
           {loading && (

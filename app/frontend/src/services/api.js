@@ -23,10 +23,11 @@ export const sendChatMessage = async (message) => {
     }
 
     const data = await response.json();
-    // バックエンドからの応答形式："response"にアシスタントメッセージ、"sources"に引用URLが含まれる
+    // バックエンドからの応答形式："response"にアシスタントメッセージ、"sources"に引用URL、"query"に検索クエリが含まれる
     return {
       response: data.response,
-      sources: data.sources
+      sources: data.sources,
+      query: data.query
     };
   } catch (error) {
     console.error('API request failed:', error);

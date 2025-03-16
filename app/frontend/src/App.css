@@ -48,6 +48,7 @@
 
 .message {
   display: flex;
+  flex-direction: column;
   max-width: 80%;
   margin-bottom: 10px;
 }
@@ -81,6 +82,14 @@
   border-top-left-radius: 5px;
 }
 
+/* 引用ソースと検索クエリの親コンテナ */
+.message-references {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 5px;
+}
+
 /* 引用ソースのスタイル */
 .message-sources {
   margin-top: 8px;
@@ -112,6 +121,28 @@
 }
 
 .sources-list a:hover {
+  text-decoration: underline;
+}
+
+/* 検索クエリリンクのスタイル */
+.search-query {
+  margin-top: 8px;
+  font-size: 14px;
+  padding-left: 15px;
+}
+
+.bing-search-link {
+  display: inline-block;
+  color: #107C10;
+  text-decoration: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: #f0f0f0;
+  transition: background-color 0.2s;
+}
+
+.bing-search-link:hover {
+  background-color: #e0e0e0;
   text-decoration: underline;
 }
 
