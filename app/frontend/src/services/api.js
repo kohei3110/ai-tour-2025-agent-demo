@@ -1,7 +1,7 @@
 // API通信を管理するサービス
 
 // バックエンドのベースURL
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.env.REACT_APP_API_URL || 'http://localhost:8000');
+const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.env.REACT_APP_API_URL || 'http://localhost:8000/api');
 
 /**
  * チャットAPIにメッセージを送信する
