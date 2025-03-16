@@ -204,7 +204,7 @@ class AssistantManagerService:
             "query": query
         }
     
-    def subsidies_agent(self, user_message: str) -> dict:
+    def subsidies_ai_agent(self, user_message: str) -> dict:
         agent, thread = self.create_subsidies_agent_thread()
         run = self.create_and_send_message(user_message, agent, thread)
 
