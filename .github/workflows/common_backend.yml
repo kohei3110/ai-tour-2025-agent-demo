@@ -101,7 +101,7 @@ jobs:
                 periodSeconds: 10
               resources:
                 cpu: 1
-                memory: 1Gi
+                memory: 2Gi
             initContainers: null
             scale:
               maxReplicas: 3
