@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import Agent, AgentThread, BingGroundingTool, ConnectionProperties, RequiredFunctionToolCall, ToolOutput, ToolSet, RunStatus, MessageRole, MessageTextContent, OpenApiTool
 
-from tools.actions.swagger_spec_tool import create_openapi_tool
+from tools.actions.swagger_spec_tool import create_subsidies_tool
 from tools.knowledge.bing_grounding_tool import create_bing_grounding_tool
 
 class AssistantManagerService:
@@ -15,7 +15,7 @@ class AssistantManagerService:
         self.project_client = project_client
         self.sources = []
 
-    def create_agent_thread(self):
+    def create_web_ai_agent_thread(self):
 
         toolset: ToolSet = ToolSet()
 
@@ -45,6 +45,39 @@ class AssistantManagerService:
         )
         print(f"Created agent: {agent}")
         return agent, thread
+    
+
+    def create_subsidies_agent_thread(self):
+        toolset: ToolSet = ToolSet()
+
+        # Load the OpenAPI spec from the JSON file
+        swagger_file_path = os.path.join(os.path.dirname(__file__), "..", "tools", "actions", "specs", "swagger_subsidies.json")
+        with open(swagger_file_path, "r", encoding="utf-8") as file:
+            subsidies_swagger_spec = json.load(file)
+
+        subsidies_tool: OpenApiTool = create_subsidies_tool(subsidies_swagger_spec)
+        toolset.add(subsidies_tool)
+
+        thread = self.project_client.agents.create_thread()
+        agent: Agent = self.project_client.agents.create_agent(
+            model="gpt-35-turbo",
+            name="Assistant Manager",
+            instructions="""
+            あなたは補助金情報検索を支援するためのアシスタントです。
+            あなたは以下の業務を遂行します。
+            - 入力されたキーワードをもとに、補助金情報を検索します。補助金情報を取得するために OpenAPI 仕様を使用します。
+
+            #制約事項
+            - ユーザーからのメッセージは日本語で入力されます
+            - ユーザーからのメッセージから忠実に情報を抽出し、それに基づいて応答を生成します。
+            - ユーザーからのメッセージに勝手に情報を追加したり、不要な改行文字 \n を追加してはいけません
+            """,
+            toolset=toolset,
+            headers={"x-ms-enable-preview": "true"},
+        )
+        print(f"Created agent: {agent}")
+        return agent, thread
+    
 
     def create_and_send_message(self, user_message: str, agent: Agent, thread: AgentThread):
         self.project_client.agents.create_message(
@@ -132,9 +165,47 @@ class AssistantManagerService:
                                         
         return assistant_messages, url_citations, query
 
-    def send_prompt(self, user_message: str) -> dict:
+    def web_ai_agent(self, user_message: str) -> dict:
         self.sources = []  # 毎回リセット
-        agent, thread = self.create_agent_thread()
+        agent, thread = self.create_web_ai_agent_thread()
+        run = self.create_and_send_message(user_message, agent, thread)
+
+        while run.status in [RunStatus.QUEUED, RunStatus.IN_PROGRESS, RunStatus.REQUIRES_ACTION]:
+            time.sleep(1)
+            run = self.project_client.agents.get_run(thread_id=thread.id, run_id=run.id)
+
+            if run.status == RunStatus.REQUIRES_ACTION:
+                tool_calls = run.required_action.submit_tool_outputs.tool_calls
+                if not tool_calls:
+                    print("No tool calls provided - cancelling run")
+                    self.project_client.agents.cancel_run(thread_id=thread.id, run_id=run.id)
+                    break
+
+                tool_outputs = self.execute_tool_calls(tool_calls)
+
+                print(f"Tool outputs: {tool_outputs}")
+                if tool_outputs:
+                    self.project_client.agents.submit_tool_outputs_to_run(
+                        thread_id=thread.id, run_id=run.id, tool_outputs=tool_outputs
+                    )
+                else:
+                    print("No tool outputs to submit - cancelling run")
+                    self.project_client.agents.cancel_run(thread_id=thread.id, run_id=run.id)
+                    break
+
+        print(f"Run completed with status: {run.status}")
+
+        assistant_messages, url_citations, query = self.get_assistant_responses(self.project_client, run, thread)
+        print(f"Assistant messages: {assistant_messages}")
+        
+        return {
+            "response": assistant_messages,
+            "sources": url_citations,
+            "query": query
+        }
+    
+    def subsidies_agent(self, user_message: str) -> dict:
+        agent, thread = self.create_subsidies_agent_thread()
         run = self.create_and_send_message(user_message, agent, thread)
 
         while run.status in [RunStatus.QUEUED, RunStatus.IN_PROGRESS, RunStatus.REQUIRES_ACTION]:
