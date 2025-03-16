@@ -15,67 +15,51 @@ class AssistantManagerService:
 
     async def process_openapi_spec(self, request):
         try:
-            # Parse the user message to extract search parameters
-            keyword = request.message if request.message else "補助金"
-            
-            # Set required parameters with default values
-            params = {
-                "keyword": keyword,
-                "sort": "created_date",
-                "order": "DESC",
-                "acceptance": "1"
-            }
-            
             openapi_spec = self.load_openapi_spec()
             openapi_tool: OpenApiTool = self.create_openapi_tool(openapi_spec)
-            with self.project_client:
-                agent = self.project_client.agents.create_agent(
-                    model="gpt-4o-mini",
-                    name="subsidies Agent",
-                    instructions=f"""You are a subsidies agent. Use the following parameters for the search:
-                    - keyword: {params['keyword']}
-                    - sort: {params['sort']}
-                    - order: {params['order']}
-                    - acceptance: {params['acceptance']}""",
-                    tools=openapi_tool.definitions
+            agent = self.project_client.agents.create_agent(
+                model="gpt-4o-mini",
+                name="Subsidies Agent",
+                instructions=f"""You are a subsidies agent. """,
+                tools=openapi_tool.definitions
+            )
+            
+            thread = self.project_client.agents.create_thread()
+            self.project_client.agents.create_message(
+                thread_id=thread.id,
+                role="user",
+                content=request.message,
+            )
+            
+            try:
+                run = self.project_client.agents.create_and_process_run(
+                    thread_id=thread.id, 
+                    agent_id=agent.id
                 )
-                
-                thread = self.project_client.agents.create_thread()
-                self.project_client.agents.create_message(
-                    thread_id=thread.id,
-                    role="user",
-                    content=request.message,
-                )
-                
-                try:
-                    run = self.project_client.agents.create_and_process_run(
-                        thread_id=thread.id, 
-                        agent_id=agent.id
-                    )
 
-                    self.logger.info(f"Run status: {run.status}")
-                    
-                    if run.status == RunStatus.FAILED:
-                        self.logger.error(f"Run failed: {run.last_error}")
-                        return {"error": f"Run failed: {run.last_error}"}
-                    
-                    messages = self.project_client.agents.list_messages(thread_id=thread.id)
-                    self.logger.info(f"Messages: {messages}")
-                    for data_point in reversed(messages.data):
-                        last_message_content = data_point.content[-1]
-                        if isinstance(last_message_content, MessageTextContent):
-                            if data_point.role == MessageRole.AGENT:
-                                self.logger.info(f"Agent response: {last_message_content.text.value}")
-                                return {"response": last_message_content.text.value}
-                    
-                    return {"response": "No response found"}
-                    
-                except JSONDecodeError as e:
-                    self.logger.error(f"JSON decode error in API response: {str(e)}")
-                    return {"error": "Invalid response from subsidies API"}
-                finally:
-                    # Clean up resources
-                    self.project_client.agents.delete_agent(agent.id)
+                self.logger.info(f"Run status: {run.status}")
+                
+                if run.status == RunStatus.FAILED:
+                    self.logger.error(f"Run failed: {run.last_error}")
+                    return {"error": f"Run failed: {run.last_error}"}
+                
+                messages = self.project_client.agents.list_messages(thread_id=thread.id)
+                self.logger.info(f"Messages: {messages}")
+                for data_point in reversed(messages.data):
+                    last_message_content = data_point.content[-1]
+                    if isinstance(last_message_content, MessageTextContent):
+                        if data_point.role == MessageRole.AGENT:
+                            self.logger.info(f"Agent response: {last_message_content.text.value}")
+                            return {"response": last_message_content.text.value}
+                
+                return {"response": "No response found"}
+                
+            except JSONDecodeError as e:
+                self.logger.error(f"JSON decode error in API response: {str(e)}")
+                return {"error": "Invalid response from subsidies API"}
+            finally:
+                # Clean up resources
+                self.project_client.agents.delete_agent(agent.id)
                 
         except Exception as e:
             self.logger.error(f"Unexpected error: {str(e)}")

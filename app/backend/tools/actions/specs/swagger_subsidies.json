@@ -7,34 +7,31 @@
   },
   "servers": [
     {
-      "url": "http://api.jgrants-portal.go.jp/exp/v1/public",
-      "description": "Main API server"
-    },
-    {
       "url": "https://api.jgrants-portal.go.jp/exp/v1/public",
-      "description": "Secure API server"
+      "description": "HTTPS Server"
     }
   ],
   "paths": {
     "/subsidies": {
       "get": {
-        "operationId": "searchSubsidies",
-        "description": "補助金一覧取得API（Search subsidies with conditions）",
+        "description": "Search subsidies with conditions",
+        "operationId": "getSubsidiesList",
         "parameters": [
           {
             "name": "keyword",
-            "description": "検索キーワード（Keyword for search）<br>最小文字数は2文字とする（スペース入力不可）。<br>大文字・小文字や全角・半角の表記ゆれを許容する（例：IoTとIOT、IoTとⅠoＴ、カタカナとｶﾀｶﾅを区別しない）。",
+            "description": "Search keyword",
             "required": true,
             "in": "query",
             "schema": {
               "type": "string",
               "minLength": 2,
-              "maxLength": 255
+              "maxLength": 255,
+              "default": "補助金"
             }
           },
           {
             "name": "sort",
-            "description": "ソート項目名（Field name to order by）<br>ソート項目名で指定した項目をソート順で並替える。<br>・created_date：作成日時<br>・acceptance_start_datetime：募集開始日時<br>・acceptance_end_datetime：募集終了日時",
+            "description": "Field name to order by",
             "required": true,
             "in": "query",
             "schema": {
@@ -43,7 +40,8 @@
                 "created_date",
                 "acceptance_start_datetime",
                 "acceptance_end_datetime"
-              ]
+              ],
+              "default": "created_date"
             }
           },
           {
@@ -56,7 +54,8 @@
               "enum": [
                 "ASC",
                 "DESC"
-              ]
+              ],
+              "default": "DESC"
             }
           },
           {
@@ -69,12 +68,13 @@
               "enum": [
                 "0",
                 "1"
-              ]
+              ],
+              "default": "1"
             }
           },
           {
             "name": "use_purpose",
-            "description": "利用目的（Use of subsidies）<br>値が複数ある場合は、「 / 」（半角スペース＋半角スラッシュ＋半角スペース）で区切る。<br>・新たな事業を行いたい<br>・販路拡大・海外展開をしたい<br>・イベント・事業運営支援がほしい<br>・事業を引き継ぎたい<br>・研究開発・実証事業を行いたい<br>・人材育成を行いたい<br>・資金繰りを改善したい<br>・設備整備・IT導入したい<br>・雇用・職場環境を改善したい<br>・エコ・SDG’s活動支援がほしい<br>・災害（自然災害、感染症等）支援がほしい<br>・教育・子育て・少子化への支援がほしい<br>・スポーツ・文化への支援がほしい<br>・安全・防災対策支援がほしい<br>・まちづくり・地域振興支援がほしい",
+            "description": "利用目的（Use of subsidies）<br>値が複数ある場合は、「 / 」（半角スペース＋半角スラッシュ＋半角スペース）で区切る。<br>・新たな事業を行いたい<br>・販路拡大・海外展開をしたい<br>・イベント・事業運営支援がほしい<br>・事業を引き継ぎたい<br>・研究開発・実証事業を行いたい<br>・人材育成を行いたい<br>・資金繰りを改善したい<br>・設備整備・IT導入したい<br>・雇用・職場環境を改善したい<br>・エコ・SDG's活動支援がほしい<br>・災害（自然災害、感染症等）支援がほしい<br>・教育・子育て・少子化への支援がほしい<br>・スポーツ・文化への支援がほしい<br>・安全・防災対策支援がほしい<br>・まちづくり・地域振興支援がほしい",
             "required": false,
             "in": "query",
             "schema": {
@@ -196,12 +196,16 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message"],
+                  "required": [
+                    "message"
+                  ],
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Bad request"
+                      "type": "string"
                     }
+                  },
+                  "example": {
+                    "message": "Bad request"
                   }
                 }
               }
@@ -213,12 +217,16 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message"],
+                  "required": [
+                    "message"
+                  ],
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Unauthorized"
+                      "type": "string"
                     }
+                  },
+                  "example": {
+                    "message": "Unauthorized"
                   }
                 }
               }
@@ -230,12 +238,16 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message"],
+                  "required": [
+                    "message"
+                  ],
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Resource not found"
+                      "type": "string"
                     }
+                  },
+                  "example": {
+                    "message": "Resource not found"
                   }
                 }
               }
@@ -247,12 +259,16 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message"],
+                  "required": [
+                    "message"
+                  ],
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Method not allowed"
+                      "type": "string"
                     }
+                  },
+                  "example": {
+                    "message": "Method not allowed"
                   }
                 }
               }
@@ -264,12 +280,16 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message"],
+                  "required": [
+                    "message"
+                  ],
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Not acceptable"
+                      "type": "string"
                     }
+                  },
+                  "example": {
+                    "message": "Not acceptable"
                   }
                 }
               }
@@ -281,19 +301,23 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message"],
+                  "required": [
+                    "message"
+                  ],
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Unsupported media type"
+                      "type": "string"
                     }
+                  },
+                  "example": {
+                    "message": "Unsupported media type"
                   }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal Server Error",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -303,17 +327,21 @@
             }
           },
           "501": {
-            "description": "Not Implemented",
+            "description": "Not implemented",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "required": ["message"],
+                  "required": [
+                    "message"
+                  ],
                   "properties": {
                     "message": {
-                      "type": "string",
-                      "example": "Not Implemented"
+                      "type": "string"
                     }
+                  },
+                  "example": {
+                    "message": "Not Implemented"
                   }
                 }
               }
@@ -328,29 +356,34 @@
       "subsidy-summaries-response": {
         "description": "補助金一覧検索結果情報（Result of querying subsidies list）",
         "type": "object",
-        "additionalProperties": true,
-        "required": ["metadata", "result"],
+        "required": [
+          "metadata",
+          "result"
+        ],
         "properties": {
           "metadata": {
             "type": "object",
-            "additionalProperties": true,
-            "required": ["type", "resultset"],
+            "required": [
+              "type",
+              "resultset"
+            ],
             "properties": {
               "type": {
                 "description": "API仕様公開URL（API Specification URL）",
-                "example": "https://anypoint.mulesoft.com/exchange/497c75e7-5d6a-48b3-a39b-4105316f61f0/exp-public/",
-                "type": "string"
+                "type": "string",
+                "example": "https://anypoint.mulesoft.com/exchange/497c75e7-5d6a-48b3-a39b-4105316f61f0/exp-public/"
               },
               "resultset": {
                 "type": "object",
-                "additionalProperties": true,
-                "required": ["count"],
+                "required": [
+                  "count"
+                ],
                 "properties": {
                   "count": {
                     "description": "取得件数（Number of results）",
-                    "example": 1,
                     "type": "integer",
-                    "format": "int"
+                    "format": "int32",
+                    "example": 1
                   }
                 }
               }
@@ -368,120 +401,126 @@
       "500-error-response": {
         "description": "エラー情報（Result of error）",
         "type": "object",
-        "additionalProperties": true,
-        "required": ["type", "errorCode", "title", "instance"],
+        "required": [
+          "type",
+          "errorCode",
+          "title",
+          "instance"
+        ],
         "properties": {
           "type": {
             "description": "API仕様公開URL（API Specification URL）",
-            "example": "https://anypoint.mulesoft.com/exchange/497c75e7-5d6a-48b3-a39b-4105316f61f0/exp-public/",
-            "type": "string"
+            "type": "string",
+            "example": "https://anypoint.mulesoft.com/exchange/497c75e7-5d6a-48b3-a39b-4105316f61f0/exp-public/"
           },
           "errorCode": {
             "description": "エラーコード（Error code）<br>・E-ML-9999：内部サーバエラー",
-            "example": "E-ML-9999",
-            "type": "string"
+            "type": "string",
+            "example": "E-ML-9999"
           },
           "title": {
             "description": "エラータイトル（Error title）",
-            "example": "Internal Server Error",
-            "type": "string"
+            "type": "string",
+            "example": "Internal Server Error"
           },
           "instance": {
             "description": "HTTPリクエストURI（HTTP request URI）",
-            "example": "/api/subsidies",
-            "type": "string"
+            "type": "string",
+            "example": "/api/subsidies"
           }
         }
       },
       "type": {
         "description": "補助金一覧検索結果情報（Result to search subsidies list)",
         "type": "object",
-        "additionalProperties": true,
-        "required": ["id", "name"],
+        "required": [
+          "id",
+          "name"
+        ],
         "properties": {
           "id": {
             "description": "補助金ID（Subsidy ID）",
-            "example": "S0J0w00wer0wUgr77E",
             "type": "string",
-            "maxLength": 18
+            "maxLength": 18,
+            "example": "S0J0w00wer0wUgr77E"
           },
           "name": {
             "description": "補助金番号（Subsidy number）",
-            "example": "S-01100011",
             "type": "string",
-            "maxLength": 10
+            "maxLength": 10,
+            "example": "S-01100011"
           },
           "title": {
             "description": "補助金名（Subsidy name）",
-            "example": "小規模事業者補助金",
-            "x-amf-union": [
+            "oneOf": [
               {
                 "$ref": "#/components/schemas/title"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "example": "小規模事業者補助金"
           },
           "target_area_search": {
-            "description": "補助対象地域（Target area to search）<br>値が複数ある場合は、「 / 」（半角スペース＋半角スラッシュ＋半角スペース）で区切る。",
-            "example": "東京都 / 大阪府",
-            "x-amf-union": [
+            "description": "補助対象地域（Target area to search）<br>値が複数ある場合は、「 / 」（半角スペース＋半角スラッシュ＋半角スペース）で区切る。<br>・全国<br>・北海道地方<br>・東北地方<br>・関東・甲信越地方<br>・東海・北陸地方<br>・近畿地方<br>・中国地方<br>・四国地方<br>・九州・沖縄地方<br>・北海道<br>・青森県<br>・岩手県<br>・宮城県<br>・秋田県<br>・山形県<br>・福島県<br>・茨城県<br>・栃木県<br>・群馬県<br>・埼玉県<br>・千葉県<br>・東京都<br>・神奈川県<br>・新潟県<br>・富山県<br>・石川県<br>・福井県<br>・山梨県<br>・長野県<br>・岐阜県<br>・静岡県<br>・愛知県<br>・三重県<br>・滋賀県<br>・京都府<br>・大阪府<br>・兵庫県<br>・奈良県<br>・和歌山県<br>・鳥取県<br>・島根県<br>・岡山県<br>・広島県<br>・山口県<br>・徳島県<br>・香川県<br>・愛媛県<br>・高知県<br>・福岡県<br>・佐賀県<br>・長崎県<br>・熊本県<br>・大分県<br>・宮崎県<br>・鹿児島県<br>・沖縄県",
+            "oneOf": [
               {
                 "$ref": "#/components/schemas/target_area_search_response"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "example": "東京都 / 大阪府"
           },
           "subsidy_max_limit": {
             "description": "補助額上限（Subsidy maximum amount）<br>入力値以下の補助額上限が設定されている補助金に絞り込む。",
-            "example": 10000000,
-            "x-amf-union": [
+            "oneOf": [
               {
                 "$ref": "#/components/schemas/subsidy_max_limit"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "example": 10000000
           },
           "acceptance_start_datetime": {
             "description": "募集開始日時（Acceptance start date）",
-            "example": "2020-02-28T16:41:41.090Z",
-            "x-amf-union": [
+            "oneOf": [
               {
                 "$ref": "#/components/schemas/acceptance_start_datetime"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "example": "2020-02-28T16:41:41.090Z"
           },
           "acceptance_end_datetime": {
             "description": "募集終了日時（Acceptance end date）",
-            "example": "2021-02-28T16:41:41.090Z",
-            "x-amf-union": [
+            "oneOf": [
               {
                 "$ref": "#/components/schemas/acceptance_end_datetime"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "example": "2021-02-28T16:41:41.090Z"
           },
           "target_number_of_employees": {
             "description": "従業員数（Number of employees）",
-            "example": "20名以下",
-            "x-amf-union": [
+            "oneOf": [
               {
                 "$ref": "#/components/schemas/target_number_of_employees"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "example": "20名以下"
           }
         }
       },
@@ -506,6 +545,7 @@
         "format": "date-time"
       },
       "target_number_of_employees": {
+        "type": "string",
         "enum": [
           "従業員の制約なし",
           "5名以下",
@@ -515,8 +555,7 @@
           "300名以下",
           "900名以下",
           "901名以上"
-        ],
-        "type": "string"
+        ]
       }
     }
   }
