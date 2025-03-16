@@ -52,13 +52,13 @@ async def post_assistant_manager_service(
     bing_search_agent = AssistantAgent(
         name="bing_search_agent",
         model_client=az_model_client,
-        tools=[AssistantManagerService.web_ai_agent(user_message=user_message)],
+        tools=[assistant_manager_service.web_ai_agent(user_message=user_message)],
         system_message="You are a search expert, help me use tools to find relevant knowledge",
     )
     subsides_agent = AssistantAgent(
         name="subsidies_agent",
         model_client=az_model_client,
-        tools=[AssistantManagerService.subsidies_ai_agent(user_message=user_message)],
+        tools=[assistant_manager_service.subsidies_ai_agent(user_message=user_message)],
         system_message="You are a subsidies expert, help me use tools to find relevant knowledge",
     )
         
