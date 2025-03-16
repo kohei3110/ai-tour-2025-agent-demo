@@ -35,8 +35,4 @@ def post_assistant_manager_service(
         dict: エージェントの応答を含む辞書。
     """
     user_message = request.message
-    response = assistant_manager_service.send_prompt(user_message)
-    
-    # レスポンス形式をそのまま返す
-    # response には {"response": assistant_messages, "sources": url_citations} が含まれる
-    return response
+    return assistant_manager_service.send_prompt(user_message)
