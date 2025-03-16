@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : (process.e
 /**
  * チャットAPIにメッセージを送信する
  * @param {string} message - ユーザーのメッセージ
- * @returns {Promise} - レスポンスのPromise
+ * @returns {Promise} - レスポンスとソース引用を含むオブジェクトのPromise
  */
 export const sendChatMessage = async (message) => {
   try {
@@ -22,7 +22,12 @@ export const sendChatMessage = async (message) => {
       throw new Error(`HTTP error! Status: ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    // バックエンドからの応答形式："response"にアシスタントメッセージ、"sources"に引用URLが含まれる
+    return {
+      response: data.response,
+      sources: data.sources
+    };
   } catch (error) {
     console.error('API request failed:', error);
     throw error;

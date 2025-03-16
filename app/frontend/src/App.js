@@ -28,8 +28,12 @@ function App() {
       // APIサービスを使用してメッセージを送信
       const data = await sendChatMessage(input);
       
-      // アシスタントの返信をチャットに追加
-      const assistantMessage = { role: 'assistant', content: data.response };
+      // アシスタントの返信をチャットに追加（引用ソースも含める）
+      const assistantMessage = { 
+        role: 'assistant', 
+        content: data.response,
+        sources: data.sources // 引用ソースを保存
+      };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -61,6 +65,22 @@ function App() {
               className={`message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
             >
               <div className="message-content">{message.content}</div>
+              
+              {/* 引用ソースがある場合に表示 */}
+              {message.sources && message.sources.length > 0 && (
+                <div className="message-sources">
+                  <p className="sources-title">引用ソース:</p>
+                  <ul className="sources-list">
+                    {message.sources.map((source, sourceIndex) => (
+                      <li key={sourceIndex}>
+                        <a href={source} target="_blank" rel="noopener noreferrer">
+                          {source}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           ))}
           {loading && (

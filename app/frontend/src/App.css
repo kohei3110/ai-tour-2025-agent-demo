@@ -81,6 +81,40 @@
   border-top-left-radius: 5px;
 }
 
+/* 引用ソースのスタイル */
+.message-sources {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #666;
+  text-align: left;
+  padding-left: 15px;
+}
+
+.sources-title {
+  margin: 4px 0;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.sources-list {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.sources-list li {
+  margin-bottom: 4px;
+}
+
+.sources-list a {
+  color: #0b93f6;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.sources-list a:hover {
+  text-decoration: underline;
+}
+
 .message-form {
   display: flex;
   padding: 15px;
