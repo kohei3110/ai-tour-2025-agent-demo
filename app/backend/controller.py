@@ -3,6 +3,7 @@ from autogen_agentchat.agents import AssistantAgent, UserProxyAgent
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+from typing import Literal
 
 from models.models import MessageRequest
 from services.assistant_manager_service import AssistantManagerService
@@ -59,12 +60,13 @@ async def post_assistant_manager_service(
         tools=[assistant_manager_service.subsidies_agent],
         system_message="You are a subsidies expert, help me use tools to find relevant knowledge",
     )
-    user_proxy_agent = UserProxyAgent("user_proxy_agent")
-    team = RoundRobinGroupChat([bing_search_agent, subsides_agent, user_proxy_agent], max_turns=10)
+        
+    team = RoundRobinGroupChat([bing_search_agent, subsides_agent], max_turns=1)
     try:
         response = await team.run(task=user_message)
         print(response)
         return response
     except Exception as e:
+        print(f"Error during team.run: {str(e)}")
         response = {"error": str(e)}
         raise e
