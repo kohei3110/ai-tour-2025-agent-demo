@@ -25,7 +25,7 @@ def get_health():
 
 
 @router.post("/api/chat")
-def post_assistant_manager_service(
+async def post_assistant_manager_service(
     request: MessageRequest, 
     assistant_manager_service: AssistantManagerService = Depends(lambda: assistant_manager_service)
 ):
@@ -62,7 +62,7 @@ def post_assistant_manager_service(
     user_proxy_agent = UserProxyAgent("user_proxy_agent")
     team = RoundRobinGroupChat([bing_search_agent, subsides_agent, user_proxy_agent], max_turns=2)
     try:
-        response = team.run(task=user_message)
+        response = await team.run(task=user_message)
         print(response)
         return response
     except Exception as e:
