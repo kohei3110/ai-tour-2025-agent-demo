@@ -49,6 +49,12 @@ function App() {
     }
   };
 
+  // HTMLからスクリプトタグを除去するための関数
+  const sanitizeHtml = (html) => {
+    // 簡易的なサニタイズ（本番環境では専用ライブラリの使用を推奨）
+    return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  };
+
   return (
     <div className="App">
       <div className="chat-container">
@@ -65,7 +71,16 @@ function App() {
               key={index} 
               className={`message ${message.role === 'user' ? 'user-message' : 'assistant-message'}`}
             >
-              <div className="message-content">{message.content}</div>
+              {message.role === 'user' ? (
+                <div className="message-content">{message.content}</div>
+              ) : (
+                <div 
+                  className="message-content"
+                  dangerouslySetInnerHTML={{ 
+                    __html: sanitizeHtml(message.content) 
+                  }}
+                />
+              )}
               
               <div className="message-references">
                 {/* 引用ソースがある場合に表示 */}
