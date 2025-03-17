@@ -64,10 +64,12 @@ function App() {
     
     if (content.match(numberListPattern)) {
       // 補助金の情報が含まれているかを確認するキーワード
-      const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '募集期間', '補助金最大額', '対象地域', '従業員数'];
+      const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金'];
+      const periodKeywords = ['募集期間', '応募期間']; 
       let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
+      let hasPeriodInfo = periodKeywords.some(keyword => content.includes(keyword));
       
-      if (hasSubsidyInfo) {
+      if (hasSubsidyInfo && hasPeriodInfo) {
         // 表のヘッダー部分を作成
         let tableHtml = `
           <div class="subsidy-table-container">
@@ -75,21 +77,23 @@ function App() {
               <thead>
                 <tr>
                   <th>補助金名</th>
-                  <th>募集期間</th>
-                  <th>補助金最大額</th>
+                  <th>応募期間</th>
+                  <th>上限額</th>
                   <th>対象地域</th>
-                  <th>従業員数制約</th>
+                  <th>従業員制約</th>
                 </tr>
               </thead>
               <tbody>
         `;
         
-        // 補助金情報を抽出するパターン
-        const subsidyPattern = /(\d+)\.\s+\*\*([^*]+)\*\*\s+[\s\S]*?募集期間：([^(\n]+)[\s\S]*?補助金最大額：([^(\n]+)[\s\S]*?対象地域：([^(\n]+)[\s\S]*?従業員数制約：([^(\n]+)/g;
+        // 補助金情報を抽出するパターン (応募期間と募集期間の両方に対応)
+        const subsidyPattern = /(\d+)\.\s+\*\*([^*]+)\*\*\s+[\s\S]*?(応募期間|募集期間)[:：]\s*([^(\n]+)[\s\S]*?(上限額|補助金最大額)[:：]\s*([^(\n]+)[\s\S]*?対象地域[:：]\s*([^(\n]+)[\s\S]*?(従業員制約|従業員数制約)[:：]\s*([^(\n]+)/g;
         let match;
+        let hasMatches = false;
         
         while ((match = subsidyPattern.exec(content)) !== null) {
-          const [_, number, title, period, amount, area, employeeLimit] = match;
+          hasMatches = true;
+          const [_, number, title, periodType, period, amountType, amount, area, empType, employeeLimit] = match;
           
           tableHtml += `
             <tr>
@@ -108,19 +112,16 @@ function App() {
           </div>
         `;
         
-        // 抽出した表形式のHTML部分がある場合、それに置き換える
-        if (tableHtml.includes("<tr>")) {
+        // 抽出した表形式のHTML部分がある場合のみ置き換える
+        if (hasMatches) {
           // 元の補助金リストの部分をテーブルに置換
           content = content.replace(
-            /(\d+\.\s+\*\*[^*]+\*\*\s+[\s\S]*?募集期間：[^(\n]+[\s\S]*?補助金最大額：[^(\n]+[\s\S]*?対象地域：[^(\n]+[\s\S]*?従業員数制約：[^(\n]+[\s\S]*?)(\d+\.\s+\*\*|ご興味|$)/g,
-            (match, group1, group2) => {
-              // 最後のエントリーだけを処理する場合
-              if (group2.includes("ご興味") || !group2) {
-                return tableHtml + "\n\n" + (group2.includes("ご興味") ? group2 : "");
-              }
-              return "";  // 内部エントリーは表に含まれているため削除
-            }
+            /(\d+\.\s+\*\*[^*]+\*\*[\s\S]*?(?:応募期間|募集期間)[:：][^(\n]+[\s\S]*?(?:上限額|補助金最大額)[:：][^(\n]+[\s\S]*?対象地域[:：][^(\n]+[\s\S]*?(?:従業員制約|従業員数制約)[:：][^(\n]+[\s\S]*?)(?=\d+\.\s+\*\*|\s*これらの補助金は|\s*ご興味|$)/g,
+            () => ""
           );
+          
+          // テーブルをコンテンツの先頭に挿入
+          content = tableHtml + "\n\n" + content;
         }
       }
     }
