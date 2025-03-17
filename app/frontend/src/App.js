@@ -85,7 +85,7 @@ function App() {
               <tbody>
         `;
         
-        // 改良された補助金情報を抽出するパターン
+        // 補助金情報を抽出するパターン - 番号で区切る
         const subsidyBlocks = content.split(/(?=\d+\.\s+\*\*)/);
         let hasMatches = false;
         
@@ -99,15 +99,15 @@ function App() {
           const title = titleMatch[1].trim();
           
           // 募集期間を抽出
-          const periodMatch = block.match(/(?:募集期間|応募期間)[:：]\s*([^(\n]+)/);
+          const periodMatch = block.match(/(?:募集期間|応募期間)[:：]\s*([^(\r\n]+)/);
           const period = periodMatch ? periodMatch[1].trim() : "";
           
-          // 最大補助金額を抽出
-          const amountMatch = block.match(/(?:最大補助金額|上限額|補助金最大額)[:：]\s*([^(\n]+)/);
+          // 最大補助金額を抽出 - パターンを改良
+          const amountMatch = block.match(/(?:最大補助金額|上限額|補助金最大額)[:：]\s*([^(\r\n]+)/);
           const amount = amountMatch ? amountMatch[1].trim() : "";
           
-          // 対象人数/従業員制約を抽出
-          const empMatch = block.match(/(?:対象人数|従業員の制約|従業員制約)[:：]\s*([^(\n]+)/);
+          // 対象人数/従業員制約を抽出 - パターンを改良
+          const empMatch = block.match(/(?:対象人数|従業員の制約|従業員制約)[:：]\s*([^(\r\n]+)/);
           const employeeLimit = empMatch ? empMatch[1].trim() : "";
           
           if (title) {
@@ -131,15 +131,16 @@ function App() {
         
         // 抽出した表形式のHTML部分がある場合のみ置き換える
         if (hasMatches) {
-          // 元の補助金リストを見つけて置き換える正規表現パターン
-          const listPattern = /(\d+\.\s+\*\*[^*]+\*\*[\s\S]*?)(?=(\d+\.\s+\*\*)|$)/g;
-          const listStart = content.search(listPattern);
-          const listEnd = content.lastIndexOf("これらの補助金は");
+          // 元の補助金リストを見つけて置き換える
+          const listStart = content.search(/\d+\.\s+\*\*[^*]+\*\*/);
+          // 補助金リスト終了位置を判定する表現を改良
+          const listEndMatch = content.match(/(?:これらの補助金|以上の情報|以上が|これらの支援金|これらの事業)/i);
+          const listEnd = listEndMatch ? listEndMatch.index : content.length;
           
           if (listStart >= 0) {
             // 補助金リストの部分をテーブルに置換
             const beforeList = content.substring(0, listStart);
-            const afterList = listEnd >= 0 ? content.substring(listEnd) : "";
+            const afterList = listEnd < content.length ? content.substring(listEnd) : "";
             
             return beforeList + tableHtml + "\n\n" + afterList;
           }
