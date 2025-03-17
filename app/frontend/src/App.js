@@ -245,7 +245,7 @@ function App() {
         // 抽出した表形式のHTML部分がある場合のみ置き換える
         if (hasMatches) {
           // 補助金情報を含む部分を特定
-          const startPattern = content.match(/(?:\d+\.\s+\*\*|\-\s+\*\*|\*\*)/);
+          const startPattern = content.match(/(?:\d+\.\s+\*\*|-\s+\*\*|\*\*)/);
           const listStart = startPattern ? startPattern.index : 0;
           
           // 補助金リスト終了位置を判定する表現を改良
