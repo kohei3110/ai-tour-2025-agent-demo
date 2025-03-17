@@ -231,6 +231,21 @@ function App() {
             }
           }
           
+          // 補助金額を抽出
+          let amount = "";
+          for (const pattern of amountPatterns) {
+            const match = block.match(pattern);
+            if (match) {
+              // 最大/上限 〜円のパターンの場合は少し処理が異なる
+              if (pattern.toString().includes('最大(?:') || pattern.toString().includes('上限(?:')) {
+                amount = match[0].trim();
+              } else {
+                amount = match[1].trim();
+              }
+              break;
+            }
+          }
+          
           if (title) {
             hasMatches = true;
             tableHtml += `
