@@ -60,11 +60,11 @@ function App() {
     if (!content) return '';
 
     // 数値＋ドット＋スペースのパターンとタイトルを含む行を検出する正規表現
-    const numberListPattern = /(\d+)\.\s\*\*([^*]+)\*\*/g;
+    const numberListPattern = /(\d+)\.\s+\*\*([^*]+)\*\*/g;
     
     if (content.match(numberListPattern)) {
       // 補助金の情報が含まれているかを確認するキーワード
-      const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金'];
+      const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '支援事業'];
       const periodKeywords = ['募集期間', '応募期間']; 
       let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
       let hasPeriodInfo = periodKeywords.some(keyword => content.includes(keyword));
@@ -79,31 +79,48 @@ function App() {
                   <th>補助金名</th>
                   <th>応募期間</th>
                   <th>上限額</th>
-                  <th>対象地域</th>
-                  <th>従業員制約</th>
+                  <th>対象者/人数</th>
                 </tr>
               </thead>
               <tbody>
         `;
         
-        // 補助金情報を抽出するパターン (応募期間と募集期間の両方に対応)
-        const subsidyPattern = /(\d+)\.\s+\*\*([^*]+)\*\*\s+[\s\S]*?(応募期間|募集期間)[:：]\s*([^(\n]+)[\s\S]*?(上限額|補助金最大額)[:：]\s*([^(\n]+)[\s\S]*?対象地域[:：]\s*([^(\n]+)[\s\S]*?(従業員制約|従業員数制約)[:：]\s*([^(\n]+)/g;
-        let match;
+        // 改良された補助金情報を抽出するパターン
+        const subsidyBlocks = content.split(/(?=\d+\.\s+\*\*)/);
         let hasMatches = false;
         
-        while ((match = subsidyPattern.exec(content)) !== null) {
-          hasMatches = true;
-          const [_, number, title, periodType, period, amountType, amount, area, empType, employeeLimit] = match;
+        for (const block of subsidyBlocks) {
+          if (!block.trim()) continue;
           
-          tableHtml += `
-            <tr>
-              <td>${title.trim()}</td>
-              <td>${period.trim()}</td>
-              <td>${amount.trim()}</td>
-              <td>${area.trim()}</td>
-              <td>${employeeLimit.trim()}</td>
-            </tr>
-          `;
+          // 補助金名を抽出
+          const titleMatch = block.match(/\d+\.\s+\*\*([^*]+)\*\*/);
+          if (!titleMatch) continue;
+          
+          const title = titleMatch[1].trim();
+          
+          // 募集期間を抽出
+          const periodMatch = block.match(/(?:募集期間|応募期間)[:：]\s*([^(\n]+)/);
+          const period = periodMatch ? periodMatch[1].trim() : "";
+          
+          // 最大補助金額を抽出
+          const amountMatch = block.match(/(?:最大補助金額|上限額|補助金最大額)[:：]\s*([^(\n]+)/);
+          const amount = amountMatch ? amountMatch[1].trim() : "";
+          
+          // 対象人数/従業員制約を抽出
+          const empMatch = block.match(/(?:対象人数|従業員の制約|従業員制約)[:：]\s*([^(\n]+)/);
+          const employeeLimit = empMatch ? empMatch[1].trim() : "";
+          
+          if (title) {
+            hasMatches = true;
+            tableHtml += `
+              <tr>
+                <td>${title}</td>
+                <td>${period}</td>
+                <td>${amount}</td>
+                <td>${employeeLimit}</td>
+              </tr>
+            `;
+          }
         }
         
         tableHtml += `
@@ -114,14 +131,18 @@ function App() {
         
         // 抽出した表形式のHTML部分がある場合のみ置き換える
         if (hasMatches) {
-          // 元の補助金リストの部分をテーブルに置換
-          content = content.replace(
-            /(\d+\.\s+\*\*[^*]+\*\*[\s\S]*?(?:応募期間|募集期間)[:：][^(\n]+[\s\S]*?(?:上限額|補助金最大額)[:：][^(\n]+[\s\S]*?対象地域[:：][^(\n]+[\s\S]*?(?:従業員制約|従業員数制約)[:：][^(\n]+[\s\S]*?)(?=\d+\.\s+\*\*|\s*これらの補助金は|\s*ご興味|$)/g,
-            () => ""
-          );
+          // 元の補助金リストを見つけて置き換える正規表現パターン
+          const listPattern = /(\d+\.\s+\*\*[^*]+\*\*[\s\S]*?)(?=(\d+\.\s+\*\*)|$)/g;
+          const listStart = content.search(listPattern);
+          const listEnd = content.lastIndexOf("これらの補助金は");
           
-          // テーブルをコンテンツの先頭に挿入
-          content = tableHtml + "\n\n" + content;
+          if (listStart >= 0) {
+            // 補助金リストの部分をテーブルに置換
+            const beforeList = content.substring(0, listStart);
+            const afterList = listEnd >= 0 ? content.substring(listEnd) : "";
+            
+            return beforeList + tableHtml + "\n\n" + afterList;
+          }
         }
       }
     }
