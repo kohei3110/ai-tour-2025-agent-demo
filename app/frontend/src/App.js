@@ -59,17 +59,28 @@ function App() {
   const formatSubsidyInfoToTable = (content) => {
     if (!content) return '';
 
-    // 数値＋ドット＋スペースのパターンとタイトルを含む行を検出する正規表現
-    const numberListPattern = /(\d+)\.\s+\*\*([^*]+)\*\*/g;
+    // 補助金情報を含むか確認するキーワード
+    const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '支援事業'];
+    const periodKeywords = ['採択期間', '募集期間', '応募期間', '開始', '終了']; 
+    let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
+    let hasPeriodInfo = periodKeywords.some(keyword => content.includes(keyword));
     
-    if (content.match(numberListPattern)) {
-      // 補助金の情報が含まれているかを確認するキーワード
-      const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '支援事業'];
-      const periodKeywords = ['募集期間', '応募期間']; 
-      let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
-      let hasPeriodInfo = periodKeywords.some(keyword => content.includes(keyword));
+    if (hasSubsidyInfo && hasPeriodInfo) {
+      // 1. 数値+ドット+スペース+タイトル のパターン
+      const numberListPattern = /(\d+)\.\s+\*\*([^*]+)\*\*/g;
       
-      if (hasSubsidyInfo && hasPeriodInfo) {
+      // 2. - **タイトル** のパターン
+      const bulletPointPattern = /-\s+\*\*([^*]+)\*\*/g;
+      
+      // 3. **タイトル** のパターン
+      const boldTitlePattern = /\*\*([^*:]+)\*\*/g;
+
+      // パターンのいずれかにマッチするか確認
+      const hasListFormat = content.match(numberListPattern) || 
+                           content.match(bulletPointPattern) ||
+                           content.match(boldTitlePattern);
+
+      if (hasListFormat) {
         // 表のヘッダー部分を作成
         let tableHtml = `
           <div class="subsidy-table-container">
@@ -85,30 +96,88 @@ function App() {
               <tbody>
         `;
         
-        // 補助金情報を抽出するパターン - 番号で区切る
-        const subsidyBlocks = content.split(/(?=\d+\.\s+\*\*)/);
+        // 補助金情報を抽出するためのブロック分割パターン
+        let blocks = [];
+        
+        // パターン1: 番号リスト (1. **タイトル**)
+        if (content.match(numberListPattern)) {
+          blocks = content.split(/(?=\d+\.\s+\*\*)/);
+        } 
+        // パターン2: 箇条書きリスト (- **タイトル**)
+        else if (content.match(bulletPointPattern)) {
+          blocks = content.split(/(?=-\s+\*\*)/);
+        }
+        // パターン3: タイトルリスト (**タイトル**:) または単一の補助金情報
+        else {
+          blocks = [content]; // 単一ブロックとして処理
+        }
+        
         let hasMatches = false;
         
-        for (const block of subsidyBlocks) {
+        for (let block of blocks) {
           if (!block.trim()) continue;
           
-          // 補助金名を抽出
-          const titleMatch = block.match(/\d+\.\s+\*\*([^*]+)\*\*/);
+          // タイトル抽出 - 複数のパターンに対応
+          let titleMatch = block.match(/\d+\.\s+\*\*([^*:]+)\*\*/) || // 番号リスト
+                          block.match(/-\s+\*\*([^*:]+)\*\*/) ||     // 箇条書きリスト
+                          block.match(/\*\*([^*:]+)\*\*/);           // 一般的な太字タイトル
+          
+          // タイトル行がない場合はスキップ
           if (!titleMatch) continue;
           
           const title = titleMatch[1].trim();
           
-          // 募集期間を抽出
-          const periodMatch = block.match(/(?:募集期間|応募期間)[:：]\s*([^(\r\n]+)/);
-          const period = periodMatch ? periodMatch[1].trim() : "";
+          // 期間情報を抽出 - 様々なパターンに対応
+          const periodPatterns = [
+            /(?:採択期間|募集期間|応募期間|申請期間)[:：]?\s*([^(\r\n]+)/,
+            /-\s+\*\*(?:採択期間|募集期間|応募期間|申請期間)\*\*[:：]?\s*([^(\r\n]+)/,
+            /開始[:：]?\s*([^(\r\n]+)/
+          ];
           
-          // 最大補助金額を抽出 - パターンを改良
-          const amountMatch = block.match(/(?:最大補助金額|上限額|補助金最大額)[:：]\s*([^(\r\n]+)/);
-          const amount = amountMatch ? amountMatch[1].trim() : "";
+          let period = "";
+          for (const pattern of periodPatterns) {
+            const match = block.match(pattern);
+            if (match) {
+              period = match[1].trim();
+              break;
+            }
+          }
           
-          // 対象人数/従業員制約を抽出 - パターンを改良
-          const empMatch = block.match(/(?:対象人数|従業員の制約|従業員制約)[:：]\s*([^(\r\n]+)/);
-          const employeeLimit = empMatch ? empMatch[1].trim() : "";
+          // 終了日が別に記載されている場合は追加
+          const endDateMatch = block.match(/終了[:：]?\s*([^(\r\n]+)/);
+          if (endDateMatch && period) {
+            period += " 〜 " + endDateMatch[1].trim();
+          }
+          
+          // 補助金額を抽出 - パターンを拡張
+          const amountPatterns = [
+            /(?:最大補助金額|上限額|補助金額|補助金の上限|補助金最大額)[:：]?\s*([^(\r\n]+)/,
+            /-\s+\*\*(?:最大補助金額|上限額|補助金額|補助金の上限)\*\*[:：]?\s*([^(\r\n]+)/
+          ];
+          
+          let amount = "";
+          for (const pattern of amountPatterns) {
+            const match = block.match(pattern);
+            if (match) {
+              amount = match[1].trim();
+              break;
+            }
+          }
+          
+          // 対象者情報を抽出 - パターンを拡張
+          const empPatterns = [
+            /(?:対象者|対象業種|対象人数|従業員の制約|従業員制約|従業員|対象)[:：]?\s*([^(\r\n]+)/,
+            /-\s+\*\*(?:対象者|対象業種|対象人数|従業員の制約)\*\*[:：]?\s*([^(\r\n]+)/
+          ];
+          
+          let employeeLimit = "";
+          for (const pattern of empPatterns) {
+            const match = block.match(pattern);
+            if (match) {
+              employeeLimit = match[1].trim();
+              break;
+            }
+          }
           
           if (title) {
             hasMatches = true;
@@ -131,8 +200,10 @@ function App() {
         
         // 抽出した表形式のHTML部分がある場合のみ置き換える
         if (hasMatches) {
-          // 元の補助金リストを見つけて置き換える
-          const listStart = content.search(/\d+\.\s+\*\*[^*]+\*\*/);
+          // 補助金情報を含む部分を特定
+          const startPattern = content.match(/(?:\d+\.\s+\*\*|\-\s+\*\*|\*\*)/);
+          const listStart = startPattern ? startPattern.index : 0;
+          
           // 補助金リスト終了位置を判定する表現を改良
           const listEndMatch = content.match(/(?:これらの補助金|以上の情報|以上が|これらの支援金|これらの事業)/i);
           const listEnd = listEndMatch ? listEndMatch.index : content.length;
@@ -143,6 +214,11 @@ function App() {
             const afterList = listEnd < content.length ? content.substring(listEnd) : "";
             
             return beforeList + tableHtml + "\n\n" + afterList;
+          }
+          
+          // 全体がタイトルと説明のみの場合
+          if (blocks.length === 1) {
+            return tableHtml + "\n\n" + content;
           }
         }
       }
