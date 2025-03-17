@@ -61,7 +61,7 @@ function App() {
 
     // 補助金情報を含むか確認するキーワード
     const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '支援事業'];
-    const periodKeywords = ['採択期間', '募集期間', '応募期間', '開始', '終了']; 
+    const periodKeywords = ['採択期間', '募集期間', '応募期間', '開始', '終了', '締切']; 
     let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
     let hasPeriodInfo = periodKeywords.some(keyword => content.includes(keyword));
     
@@ -76,10 +76,16 @@ function App() {
       const boldTitlePattern = /\*\*([^*:]+)\*\*/g;
 
       // パターンのいずれかにマッチするか確認
-      const hasListFormat = content.match(numberListPattern) || 
-                           content.match(bulletPointPattern) ||
-                           content.match(boldTitlePattern);
+      let hasListFormat = content.match(numberListPattern) || 
+                         content.match(bulletPointPattern) ||
+                         content.match(boldTitlePattern);
 
+      // 追加: タイトル行のみで格納されている場合にも対応
+      const singleTitlePattern = /^\s*\*\*([^*]+)\*\*/;
+      if (!hasListFormat && singleTitlePattern.test(content)) {
+        hasListFormat = true;
+      }
+                         
       if (hasListFormat) {
         // 表のヘッダー部分を作成
         let tableHtml = `
@@ -107,7 +113,25 @@ function App() {
         else if (content.match(bulletPointPattern)) {
           blocks = content.split(/(?=-\s+\*\*)/);
         }
-        // パターン3: タイトルリスト (**タイトル**:) または単一の補助金情報
+        // パターン3: 最初の補助金情報が番号なしのタイトルだけの場合
+        else if (content.match(/^\s*\*\*([^*]+)\*\*/)) {
+          // 先頭の補助金情報とそれ以降の複数補助金情報を分離
+          const mainBlock = content.match(/^\s*\*\*([^*]+)\*\*.*?(?=\d+\.\s+\*\*|$)/s);
+          if (mainBlock) {
+            // 最初の補助金情報をブロックに追加
+            blocks.push(mainBlock[0]);
+            
+            // 残りの補助金情報を番号付きリストとして処理
+            const remainingContent = content.substring(mainBlock[0].length);
+            if (remainingContent.trim()) {
+              const remainingBlocks = remainingContent.split(/(?=\d+\.\s+\*\*)/);
+              blocks = [...blocks, ...remainingBlocks];
+            }
+          } else {
+            blocks = [content]; // 単一ブロックとして処理
+          }
+        }
+        // パターン4: タイトルリスト (**タイトル**:) または単一の補助金情報
         else {
           blocks = [content]; // 単一ブロックとして処理
         }
@@ -131,6 +155,8 @@ function App() {
           const periodPatterns = [
             /(?:採択期間|募集期間|応募期間|申請期間)[:：]?\s*([^(\r\n]+)/,
             /-\s+\*\*(?:採択期間|募集期間|応募期間|申請期間)\*\*[:：]?\s*([^(\r\n]+)/,
+            /-\s+(?:募集開始日|応募期間|開始日)[:：]?\s*([^(\r\n]+)/,
+            /開始日[:：]?\s*([^(\r\n]+)/,
             /開始[:：]?\s*([^(\r\n]+)/
           ];
           
@@ -144,15 +170,32 @@ function App() {
           }
           
           // 終了日が別に記載されている場合は追加
-          const endDateMatch = block.match(/終了[:：]?\s*([^(\r\n]+)/);
-          if (endDateMatch && period) {
-            period += " 〜 " + endDateMatch[1].trim();
+          const endDatePatterns = [
+            /(?:募集締切日|終了日)[:：]?\s*([^(\r\n]+)/,
+            /-\s+(?:募集締切日|終了日)[:：]?\s*([^(\r\n]+)/,
+            /終了[:：]?\s*([^(\r\n]+)/
+          ];
+          
+          let endDate = "";
+          for (const pattern of endDatePatterns) {
+            const match = block.match(pattern);
+            if (match) {
+              endDate = match[1].trim();
+              break;
+            }
+          }
+          
+          if (endDate && period) {
+            period += " 〜 " + endDate;
+          } else if (endDate && !period) {
+            period = endDate;
           }
           
           // 補助金額を抽出 - パターンを拡張
           const amountPatterns = [
-            /(?:最大補助金額|上限額|補助金額|補助金の上限|補助金最大額)[:：]?\s*([^(\r\n]+)/,
-            /-\s+\*\*(?:最大補助金額|上限額|補助金額|補助金の上限)\*\*[:：]?\s*([^(\r\n]+)/
+            /(?:最大補助金額|上限額|補助金額|補助金の上限|補助金上限|補助金最大額)[:：]?\s*([^(\r\n]+)/,
+            /-\s+\*\*(?:最大補助金額|上限額|補助金額|補助金の上限)\*\*[:：]?\s*([^(\r\n]+)/,
+            /-\s+(?:最大補助金額|上限額|補助金額|補助金の上限|補助金上限)[:：]?\s*([^(\r\n]+)/
           ];
           
           let amount = "";
@@ -166,8 +209,9 @@ function App() {
           
           // 対象者情報を抽出 - パターンを拡張
           const empPatterns = [
-            /(?:対象者|対象業種|対象人数|従業員の制約|従業員制約|従業員|対象)[:：]?\s*([^(\r\n]+)/,
-            /-\s+\*\*(?:対象者|対象業種|対象人数|従業員の制約)\*\*[:：]?\s*([^(\r\n]+)/
+            /(?:対象者|対象業種|対象人数|従業員の制約|従業員制約|従業員数|従業員|対象地域|対象)[:：]?\s*([^(\r\n]+)/,
+            /-\s+\*\*(?:対象者|対象業種|対象人数|従業員の制約|対象従業員数)\*\*[:：]?\s*([^(\r\n]+)/,
+            /-\s+(?:対象者|対象業種|対象人数|従業員の制約|対象従業員数|対象地域)[:：]?\s*([^(\r\n]+)/
           ];
           
           let employeeLimit = "";
@@ -205,7 +249,7 @@ function App() {
           const listStart = startPattern ? startPattern.index : 0;
           
           // 補助金リスト終了位置を判定する表現を改良
-          const listEndMatch = content.match(/(?:これらの補助金|以上の情報|以上が|これらの支援金|これらの事業)/i);
+          const listEndMatch = content.match(/(?:これらの補助金|以上の情報|以上が|これらの支援金|これらの事業|これらの回答)/i);
           const listEnd = listEndMatch ? listEndMatch.index : content.length;
           
           if (listStart >= 0) {
@@ -220,6 +264,9 @@ function App() {
           if (blocks.length === 1) {
             return tableHtml + "\n\n" + content;
           }
+          
+          // それ以外の場合はテーブルだけを返す
+          return tableHtml;
         }
       }
     }
