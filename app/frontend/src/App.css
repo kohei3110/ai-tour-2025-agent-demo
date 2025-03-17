@@ -237,3 +237,52 @@
     transform: rotate(360deg);
   }
 }
+
+/* 補助金テーブルのスタイル */
+.subsidy-table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin: 10px 0;
+}
+
+.subsidy-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 15px 0;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.subsidy-table th, 
+.subsidy-table td {
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.subsidy-table th {
+  background-color: #f2f2f2;
+  color: #555;
+  font-weight: 600;
+}
+
+.subsidy-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.subsidy-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+/* レスポンシブスタイル */
+@media only screen and (max-width: 768px) {
+  .assistant-message {
+    max-width: 95%;
+  }
+
+  .subsidy-table th, 
+  .subsidy-table td {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+}

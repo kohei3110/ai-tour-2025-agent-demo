@@ -55,6 +55,79 @@ function App() {
     return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
   };
 
+  // 補助金情報のリストをテーブル形式に変換する関数
+  const formatSubsidyInfoToTable = (content) => {
+    if (!content) return '';
+
+    // 数値＋ドット＋スペースのパターンとタイトルを含む行を検出する正規表現
+    const numberListPattern = /(\d+)\.\s\*\*([^*]+)\*\*/g;
+    
+    if (content.match(numberListPattern)) {
+      // 補助金の情報が含まれているかを確認するキーワード
+      const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '募集期間', '補助金最大額', '対象地域', '従業員数'];
+      let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
+      
+      if (hasSubsidyInfo) {
+        // 表のヘッダー部分を作成
+        let tableHtml = `
+          <div class="subsidy-table-container">
+            <table class="subsidy-table">
+              <thead>
+                <tr>
+                  <th>補助金名</th>
+                  <th>募集期間</th>
+                  <th>補助金最大額</th>
+                  <th>対象地域</th>
+                  <th>従業員数制約</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        
+        // 補助金情報を抽出するパターン
+        const subsidyPattern = /(\d+)\.\s+\*\*([^*]+)\*\*\s+[\s\S]*?募集期間：([^(\n]+)[\s\S]*?補助金最大額：([^(\n]+)[\s\S]*?対象地域：([^(\n]+)[\s\S]*?従業員数制約：([^(\n]+)/g;
+        let match;
+        
+        while ((match = subsidyPattern.exec(content)) !== null) {
+          const [_, number, title, period, amount, area, employeeLimit] = match;
+          
+          tableHtml += `
+            <tr>
+              <td>${title.trim()}</td>
+              <td>${period.trim()}</td>
+              <td>${amount.trim()}</td>
+              <td>${area.trim()}</td>
+              <td>${employeeLimit.trim()}</td>
+            </tr>
+          `;
+        }
+        
+        tableHtml += `
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+        // 抽出した表形式のHTML部分がある場合、それに置き換える
+        if (tableHtml.includes("<tr>")) {
+          // 元の補助金リストの部分をテーブルに置換
+          content = content.replace(
+            /(\d+\.\s+\*\*[^*]+\*\*\s+[\s\S]*?募集期間：[^(\n]+[\s\S]*?補助金最大額：[^(\n]+[\s\S]*?対象地域：[^(\n]+[\s\S]*?従業員数制約：[^(\n]+[\s\S]*?)(\d+\.\s+\*\*|ご興味|$)/g,
+            (match, group1, group2) => {
+              // 最後のエントリーだけを処理する場合
+              if (group2.includes("ご興味") || !group2) {
+                return tableHtml + "\n\n" + (group2.includes("ご興味") ? group2 : "");
+              }
+              return "";  // 内部エントリーは表に含まれているため削除
+            }
+          );
+        }
+      }
+    }
+    
+    return content;
+  };
+
   return (
     <div className="App">
       <div className="chat-container">
@@ -77,7 +150,7 @@ function App() {
                 <div 
                   className="message-content"
                   dangerouslySetInnerHTML={{ 
-                    __html: sanitizeHtml(message.content) 
+                    __html: sanitizeHtml(formatSubsidyInfoToTable(message.content)) 
                   }}
                 />
               )}
