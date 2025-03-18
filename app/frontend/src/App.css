@@ -59,6 +59,8 @@
 
 .assistant-message {
   align-self: flex-start;
+  /* 表を含むメッセージは幅を広げる */
+  max-width: 95%;
 }
 
 .message-content {
@@ -80,6 +82,7 @@
   background-color: #e5e5ea;
   color: #333;
   border-top-left-radius: 5px;
+  padding: 8px 12px; /* 吹き出し内のパディングを少し縮小 */
 }
 
 /* 引用ソースと検索クエリの親コンテナ */
@@ -242,28 +245,34 @@
 .subsidy-table-container {
   width: 100%;
   overflow-x: auto;
-  margin: 10px 0;
+  margin: 5px 0; /* マージンを縮小 */
 }
 
 .subsidy-table {
   border-collapse: collapse;
   width: 100%;
-  margin: 15px 0;
-  font-size: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  margin: 8px 0; /* マージンを縮小 */
+  font-size: 13px; /* フォントサイズを少し小さく */
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1); /* 影を小さく */
+  table-layout: fixed; /* テーブルレイアウトを固定 */
 }
 
 .subsidy-table th, 
 .subsidy-table td {
   border: 1px solid #ddd;
-  padding: 8px 10px;
+  padding: 4px 8px; /* パディングを縮小 */
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis; /* 長いテキストは省略記号で表示 */
+  white-space: normal; /* 長いテキストは折り返す */
+  line-height: 1.3; /* 行間を狭く */
 }
 
 .subsidy-table th {
   background-color: #f2f2f2;
   color: #555;
   font-weight: 600;
+  padding: 5px 8px; /* ヘッダーのパディングも調整 */
 }
 
 .subsidy-table tr:nth-child(even) {
@@ -279,10 +288,9 @@
   .assistant-message {
     max-width: 95%;
   }
-
   .subsidy-table th, 
   .subsidy-table td {
-    padding: 6px 8px;
-    font-size: 13px;
+    padding: 3px 6px; /* モバイル表示時はさらにコンパクトに */
+    font-size: 12px;
   }
 }
