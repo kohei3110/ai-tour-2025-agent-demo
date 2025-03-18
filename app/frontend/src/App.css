@@ -246,34 +246,34 @@
 .subsidy-table-container {
   width: 100%;
   overflow-x: auto;
-  margin: 2px 0; /* 3px 0から2px 0に削減 */
+  margin: 5px 0; /* 2pxから5pxに戻す */
 }
 
 .subsidy-table {
   border-collapse: collapse;
   width: 100%;
-  margin: 2px 0; /* 5px 0から2px 0に削減 */
-  font-size: 12px; /* 13pxから12pxに縮小 */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* 影を小さく */
-  table-layout: fixed; /* テーブルレイアウトを固定 */
+  margin: 5px 0; /* 2pxから5pxに戻す */
+  font-size: 13px; /* 12pxから13pxに戻す */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 影を少し強く */
+  table-layout: fixed;
 }
 
 .subsidy-table th, 
 .subsidy-table td {
   border: 1px solid #ddd;
-  padding: 2px 4px; /* パディングをさらに縮小 */
+  padding: 8px 12px; /* パディングを増やす */
   text-align: left;
   overflow: hidden;
-  text-overflow: ellipsis; /* 長いテキストは省略記号で表示 */
-  white-space: normal; /* 長いテキストは折り返す */
-  line-height: 1.2; /* 行間をさらに狭く */
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.4; /* 行間を広げる */
 }
 
 .subsidy-table th {
   background-color: #f2f2f2;
   color: #555;
   font-weight: 600;
-  padding: 3px 4px; /* ヘッダーのパディングも調整 */
+  padding: 10px 12px; /* ヘッダーのパディングを増やす */
 }
 
 .subsidy-table tr:nth-child(even) {
