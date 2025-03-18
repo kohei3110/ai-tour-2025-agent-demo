@@ -280,16 +280,16 @@ function App() {
             const beforeList = content.substring(0, listStart).trim();
             const afterList = listEnd < content.length ? content.substring(listEnd).trim() : "";
             
-            return [beforeList, tableHtml, afterList].filter(Boolean).join('\n');
+            return [beforeList, tableHtml, afterList].filter(Boolean).map(part => part.trim()).join('');
           }
           
           // 全体がタイトルと説明のみの場合
           if (blocks.length === 1) {
-            return [tableHtml, content.trim()].filter(Boolean).join('\n');
+            return [tableHtml, content.trim()].filter(Boolean).map(part => part.trim()).join('');
           }
           
           // それ以外の場合はテーブルだけを返す
-          return tableHtml;
+          return tableHtml.trim();
         }
       }
     }
