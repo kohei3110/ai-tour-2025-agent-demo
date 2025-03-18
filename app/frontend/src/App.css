@@ -246,13 +246,13 @@
 .subsidy-table-container {
   width: 100%;
   overflow-x: auto;
-  margin: 3px 0; /* 5px 0から3px 0に削減 */
+  margin: 2px 0; /* 3px 0から2px 0に削減 */
 }
 
 .subsidy-table {
   border-collapse: collapse;
   width: 100%;
-  margin: 5px 0; /* 8px 0から5px 0に削減 */
+  margin: 2px 0; /* 5px 0から2px 0に削減 */
   font-size: 12px; /* 13pxから12pxに縮小 */
   box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* 影を小さく */
   table-layout: fixed; /* テーブルレイアウトを固定 */
@@ -261,19 +261,19 @@
 .subsidy-table th, 
 .subsidy-table td {
   border: 1px solid #ddd;
-  padding: 4px 8px; /* パディングを縮小 */
+  padding: 2px 4px; /* パディングをさらに縮小 */
   text-align: left;
   overflow: hidden;
   text-overflow: ellipsis; /* 長いテキストは省略記号で表示 */
   white-space: normal; /* 長いテキストは折り返す */
-  line-height: 1.3; /* 行間を狭く */
+  line-height: 1.2; /* 行間をさらに狭く */
 }
 
 .subsidy-table th {
   background-color: #f2f2f2;
   color: #555;
   font-weight: 600;
-  padding: 5px 8px; /* ヘッダーのパディングも調整 */
+  padding: 3px 4px; /* ヘッダーのパディングも調整 */
 }
 
 .subsidy-table tr:nth-child(even) {
