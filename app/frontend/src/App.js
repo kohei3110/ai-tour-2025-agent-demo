@@ -277,15 +277,15 @@ function App() {
           
           if (listStart >= 0) {
             // 補助金リストの部分をテーブルに置換
-            const beforeList = content.substring(0, listStart);
-            const afterList = listEnd < content.length ? content.substring(listEnd) : "";
+            const beforeList = content.substring(0, listStart).trim();
+            const afterList = listEnd < content.length ? content.substring(listEnd).trim() : "";
             
-            return beforeList + tableHtml + "\n\n" + afterList;
+            return [beforeList, tableHtml, afterList].filter(Boolean).join('\n');
           }
           
           // 全体がタイトルと説明のみの場合
           if (blocks.length === 1) {
-            return tableHtml + "\n\n" + content;
+            return [tableHtml, content.trim()].filter(Boolean).join('\n');
           }
           
           // それ以外の場合はテーブルだけを返す
