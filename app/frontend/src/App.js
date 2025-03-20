@@ -265,31 +265,19 @@ function App() {
           </div>
         `;
         
-        // 抽出した表形式のHTML部分がある場合のみ置き換える
+        // 抽出した表形式のHTML部分がある場合のみ置換える
         if (hasMatches) {
           // 補助金情報を含む部分を特定
           const startPattern = content.match(/(?:\d+\.\s+\*\*|-\s+\*\*|\*\*)/);
           const listStart = startPattern ? startPattern.index : 0;
           
-          // 補助金リスト終了位置を判定する表現を改良
-          const listEndMatch = content.match(/(?:これらの補助金|以上の情報|以上が|これらの支援金|これらの事業|これらの回答)/i);
-          const listEnd = listEndMatch ? listEndMatch.index : content.length;
+          // 補助金リストの部分をテーブルに置換
+          const beforeList = content.substring(0, listStart).trim();
           
-          if (listStart >= 0) {
-            // 補助金リストの部分をテーブルに置換
-            const beforeList = content.substring(0, listStart).trim();
-            const afterList = listEnd < content.length ? content.substring(listEnd).trim() : "";
-            
-            return [beforeList, tableHtml, afterList].filter(Boolean).join('');
-          }
+          // 説明文があれば、それを保持
+          const description = content.substring(listStart).trim();
           
-          // 全体がタイトルと説明のみの場合
-          if (blocks.length === 1) {
-            return [tableHtml, content.trim()].join('');
-          }
-          
-          // それ以外の場合はテーブルだけを返す
-          return tableHtml;
+          return [beforeList, tableHtml, description].filter(Boolean).join('');
         }
       }
     }
