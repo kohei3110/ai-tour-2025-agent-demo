@@ -6,6 +6,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [copySuccess, setCopySuccess] = useState('');
   const messageEndRef = useRef(null);
 
   // 自動スクロール機能
@@ -33,7 +34,8 @@ function App() {
         role: 'assistant', 
         content: data.response,
         sources: data.sources, // 引用ソース
-        query: data.query // 検索クエリ
+        query: data.query, // 検索クエリ
+        applicationText: data.applicationText // 申請書テキスト
       };
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
     } catch (error) {
@@ -53,6 +55,20 @@ function App() {
   const sanitizeHtml = (html) => {
     // 簡易的なサニタイズ（本番環境では専用ライブラリの使用を推奨）
     return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  };
+
+  // クリップボードにコピーする関数
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        setCopySuccess('コピーしました！');
+        setTimeout(() => setCopySuccess(''), 2000);
+      })
+      .catch(err => {
+        console.error('コピーに失敗しました', err);
+        setCopySuccess('コピーに失敗しました');
+        setTimeout(() => setCopySuccess(''), 2000);
+      });
   };
 
   // 補助金情報のリストをテーブル形式に変換する関数
@@ -310,6 +326,22 @@ function App() {
                     __html: sanitizeHtml(formatSubsidyInfoToTable(message.content)) 
                   }}
                 />
+              )}
+              
+              {/* 申請書テキスト表示セクション */}
+              {message.applicationText && (
+                <div className="application-form-container">
+                  <div className="application-form-header">
+                    <h3>補助金申請書テンプレート</h3>
+                    <button 
+                      className="copy-button"
+                      onClick={() => copyToClipboard(message.applicationText)}
+                    >
+                      {copySuccess || 'コピー'}
+                    </button>
+                  </div>
+                  <pre className="application-form-text">{message.applicationText}</pre>
+                </div>
               )}
               
               <div className="message-references">

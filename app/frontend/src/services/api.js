@@ -27,7 +27,8 @@ export const sendChatMessage = async (message) => {
     return {
       response: data.response,
       sources: data.sources,
-      query: data.query
+      query: data.query,
+      applicationText: data.application_text // 新しく追加された申請書テキスト
     };
   } catch (error) {
     console.error('API request failed:', error);
