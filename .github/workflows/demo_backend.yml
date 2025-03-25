@@ -2,6 +2,9 @@ name: Build and Deploy Backend API to demo environment
 
 on:
   push:
+    paths:
+      - 'app/backend/**'
+      - '.github/workflows/**'
 
 jobs:
   build-backend-api:
@@ -19,3 +22,6 @@ jobs:
       ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
       AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
       PROJECT_CONNECTION_STRING: ${{ secrets.PROJECT_CONNECTION_STRING }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}

@@ -33,6 +33,12 @@ on:
         required: true
       PROJECT_CONNECTION_STRING:
         required: true
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
   
 env:
   FULL_IMAGE_NAME_API: ${{ inputs.ACR }}/${{ inputs.IMAGE_NAME_API }}:${{ inputs.TAG }}
@@ -84,6 +90,36 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Generate template.yml with dynamic GIT_SHA
+        run: |
+          mkdir -p ${{ inputs.WORKING_DIRECTORY_API }}/config/containerapps
+          cat <<EOF > ${{ inputs.WORKING_DIRECTORY_API }}/config/containerapps/template.yml
+          template:
+            containers:
+            - image: ${{ env.FULL_IMAGE_NAME_API }}
+              name: ${{ inputs.IMAGE_NAME_API }}
+              probes:
+              - type: Liveness
+                httpGet:
+                  path: "/api/health"
+                  port: ${{ env.PORT }}
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              resources:
+                cpu: 1
+                memory: 2Gi
+            initContainers: null
+            scale:
+              maxReplicas: 3
+              minReplicas: 1
+              rules:
+              - name: httpscalingrule
+                custom:
+                  type: http
+                  metadata:
+                    concurrentRequests: '50'
+          EOF
+
       - name: Deploy API image To Azure Container Apps
         uses: azure/container-apps-deploy-action@v1
         with:
@@ -92,7 +128,8 @@ jobs:
           imageToDeploy: ${{ env.FULL_IMAGE_NAME_API }}
           targetPort: ${{ env.PORT }}
           ingress: ${{ env.INGRESS }}
+          yamlConfigPath: ${{ inputs.WORKING_DIRECTORY_API }}/config/containerapps/template.yml
 
       - name: Update environment variables for Azure Container Apps
         run: |
-          az containerapp update --name ${{ inputs.CONTAINER_APP_NAME }} --resource-group ${{ inputs.RESOURCE_GROUP }} --container-name ${{ inputs.CONTAINER_APP_NAME }} --set-env-vars "PROJECT_CONNECTION_STRING=${{ secrets.PROJECT_CONNECTION_STRING }}"
+          az containerapp update --name ${{ inputs.CONTAINER_APP_NAME }} --resource-group ${{ inputs.RESOURCE_GROUP }} --container-name ${{ inputs.CONTAINER_APP_NAME }} --set-env-vars "PROJECT_CONNECTION_STRING=${{ secrets.PROJECT_CONNECTION_STRING }}" "AZURE_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" "AZURE_CLIENT_SECRET=${{ secrets.AZURE_CLIENT_SECRET }}" "AZURE_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}"
