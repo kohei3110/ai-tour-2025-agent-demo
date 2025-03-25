@@ -152,8 +152,10 @@
 
 .message-form {
   display: flex;
+  flex-direction: column;
   padding: 15px;
   border-top: 1px solid #eaeaea;
+  gap: 15px;
 }
 
 .message-form input {
@@ -308,6 +310,18 @@
   margin: 0;
   font-size: 16px;
   color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.ai-enhanced-tag {
+  font-size: 12px;
+  background-color: #7B68EE;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-weight: normal;
 }
 
 .copy-button {
@@ -339,6 +353,227 @@
   font-family: 'Courier New', monospace;
 }
 
+/* ビジネス情報入力フォームのスタイル */
+.business-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.business-form-container {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.business-form-container h3 {
+  margin-top: 0;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.business-description-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  resize: vertical;
+  margin: 10px 0;
+  font-family: inherit;
+}
+
+.business-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.cancel-button {
+  background-color: #f0f0f0;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 15px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.submit-button {
+  background-color: #0b93f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 15px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background-color: #e0e0e0;
+}
+
+.submit-button:hover {
+  background-color: #0980d7;
+}
+
+.cancel-button:disabled,
+.submit-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* AI申請書テンプレート作成ボタン */
+.action-button-container {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+.create-application-button {
+  background-color: #7B68EE;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+}
+
+.create-application-button:hover {
+  background-color: #6A5ACD;
+}
+
+.create-application-button:before {
+  content: "✨";
+  margin-right: 6px;
+}
+
+/* 補助金申請文章生成ボタンのスタイル */
+.subsidy-button-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.generate-subsidy-button {
+  background-color: #8A2BE2;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 300px;
+}
+
+.generate-subsidy-button:hover {
+  background-color: #7B1FA2;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.generate-subsidy-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.generate-subsidy-button:before {
+  content: "📝";
+  margin-right: 8px;
+  font-size: 16px;
+}
+
+/* メッセージフォームのパディングを調整 */
+.message-form {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  border-top: 1px solid #eaeaea;
+  gap: 10px;
+}
+
+/* 入力フィールドとボタンを横並びに */
+.message-form input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 16px;
+  outline: none;
+}
+
+/* フォーム内の入力部分とボタン部分を横並びに */
+.message-form > div:last-child {
+  display: flex;
+}
+
+/* 入力コンテナのスタイル */
+.input-container {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+}
+
+.input-container input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 16px;
+  outline: none;
+}
+
+.input-container input:focus {
+  border-color: #0b93f6;
+}
+
+.input-container button {
+  background-color: #0b93f6;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  min-width: 80px;
+}
+
+.input-container button:hover {
+  background-color: #0980d7;
+}
+
+.input-container button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
 /* レスポンシブスタイル */
 @media only screen and (max-width: 768px) {
   .assistant-message {
@@ -362,5 +597,23 @@
   .copy-button {
     font-size: 12px;
     padding: 4px 8px;
+  }
+  
+  .business-form-container {
+    width: 95%;
+    padding: 15px;
+  }
+
+  .generate-subsidy-button {
+    font-size: 14px;
+    padding: 8px 16px;
+  }
+  
+  .input-container {
+    flex-direction: column;
+  }
+  
+  .input-container button {
+    width: 100%;
   }
 }

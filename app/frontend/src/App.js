@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { sendChatMessage } from './services/api';
+import { sendChatMessage, generateApplicationTemplate, generateMessage } from './services/api';
 import './App.css';
 
 function App() {
@@ -7,6 +7,10 @@ function App() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [copySuccess, setCopySuccess] = useState('');
+  const [showBusinessForm, setShowBusinessForm] = useState(false);
+  const [businessDescription, setBusinessDescription] = useState('');
+  const [currentSubsidyInfo, setCurrentSubsidyInfo] = useState(null);
+  const [generatingTemplate, setGeneratingTemplate] = useState(false);
   const messageEndRef = useRef(null);
 
   // 自動スクロール機能
@@ -35,9 +39,16 @@ function App() {
         content: data.response,
         sources: data.sources, // 引用ソース
         query: data.query, // 検索クエリ
-        applicationText: data.applicationText // 申請書テキスト
+        applicationText: data.applicationText, // 申請書テキスト
+        subsidyInfo: extractSubsidyInfo(data.response) // 補助金情報を抽出
       };
+
       setMessages(prevMessages => [...prevMessages, assistantMessage]);
+      
+      // 補助金情報が含まれている場合は保存
+      if (assistantMessage.subsidyInfo) {
+        setCurrentSubsidyInfo(assistantMessage.subsidyInfo);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       // エラーメッセージをチャットに表示
@@ -49,6 +60,81 @@ function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 補助金情報を応答から抽出する関数
+  const extractSubsidyInfo = (content) => {
+    if (!content) return null;
+    
+    // キーワードを拡張
+    const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '支援事業', '給付金'];
+    const periodKeywords = ['採択期間', '募集期間', '応募期間', '開始', '終了', '締切', '申請期限'];
+    
+    let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
+    let hasPeriodInfo = periodKeywords.some(keyword => content.includes(keyword));
+    
+    if (hasSubsidyInfo) {  // 期間情報の有無に関わらず補助金情報を抽出
+      // タイトル抽出を改善
+      let titleMatch = content.match(/\*\*([^*:]+)\*\*/) || 
+                      content.match(/「([^」]+)」/) ||
+                      content.match(/『([^』]+)』/) ||
+                      content.match(/(\d+\.\s*[^\n]+)/) ||
+                      content.match(/(-\s*[^\n]+)/);
+      
+      const title = titleMatch ? titleMatch[1].trim() : "補助金情報";
+      
+      // 期間情報の抽出を改善
+      const periodPattern = /(?:採択期間|募集期間|応募期間|申請期間|申請期限)[:：]?\s*([^(\r\n]+)/;
+      const periodMatch = content.match(periodPattern);
+      
+      // 補助金額を抽出（パターンを追加）
+      const amountPattern = /(?:最大補助金額|上限額|補助金額|補助金の上限|補助金上限|上限金額|給付額|支給額)[:：]?\s*([^(\r\n]+)/;
+      const amountMatch = content.match(amountPattern) || 
+                         content.match(/(?:最大|上限)(?:[\d,，.億万千百]+(?:円|万円|億円))/);
+      
+      // 対象者情報を抽出（パターンを追加）
+      const empPattern = /(?:対象者|対象業種|対象企業|対象事業者|従業員の制約|従業員制約|従業員数|従業員|対象地域|対象)[:：]?\s*([^(\r\n]+)/;
+      const empMatch = content.match(empPattern);
+      
+      // 開始日と終了日を抽出
+      const startDatePattern = /(?:開始日|開始|募集開始)[:：]?\s*([^(\r\n]+)/;
+      const startDateMatch = content.match(startDatePattern);
+      
+      const endDatePattern = /(?:終了日|締切日|締切|期限)[:：]?\s*([^(\r\n]+)/;
+      const endDateMatch = content.match(endDatePattern);
+      
+      // 数値部分を抽出してsubsidy_max_limitを推定
+      let subsidyMaxLimit = null;
+      if (amountMatch) {
+        const amountStr = amountMatch[1] || amountMatch[0];
+        const numMatch = amountStr.match(/([\d,，]+)/);
+        if (numMatch) {
+          subsidyMaxLimit = parseInt(numMatch[1].replace(/[,，]/g, ''), 10);
+          
+          if (amountStr.includes('億円')) {
+            subsidyMaxLimit *= 100000000;
+          } else if (amountStr.includes('万円')) {
+            subsidyMaxLimit *= 10000;
+          }
+        }
+      }
+      
+      // より詳細な補助金情報オブジェクトを作成
+      const subsidyInfo = {
+        title: title,
+        acceptance_start_datetime: startDateMatch ? startDateMatch[1] : null,
+        acceptance_end_datetime: endDateMatch ? endDateMatch[1] : (periodMatch ? periodMatch[1] : null),
+        target_area_search: empMatch ? empMatch[1] : "全国",
+        subsidy_max_limit: subsidyMaxLimit,
+        target_number_of_employees: empMatch ? empMatch[1] : null,
+        summary: content.substring(0, 200),
+        raw_content: content  // 生の応答内容も保存
+      };
+      
+      return subsidyInfo;
+    }
+    
+    return null;
   };
 
   // HTMLからスクリプトタグを除去するための関数
@@ -69,6 +155,55 @@ function App() {
         setCopySuccess('コピーに失敗しました');
         setTimeout(() => setCopySuccess(''), 2000);
       });
+  };
+
+  // ビジネス説明フォームを表示
+  const handleCreateApplication = () => {
+    setShowBusinessForm(true);
+  };
+
+  // ビジネス説明フォームをキャンセル
+  const handleCancelBusinessForm = () => {
+    setShowBusinessForm(false);
+    setBusinessDescription('');
+  };
+
+  // AI拡張テンプレートを生成
+  const handleGenerateAITemplate = async () => {
+    if (!currentSubsidyInfo) return;
+    
+    setGeneratingTemplate(true);
+    
+    try {
+      // API呼び出し
+      const result = await generateApplicationTemplate(
+        currentSubsidyInfo, 
+        businessDescription.trim() || null
+      );
+      
+      // 結果をメッセージに追加
+      const templateMessage = {
+        role: 'assistant',
+        content: '補助金申請書テンプレートを生成しました：',
+        applicationText: result.template,
+        aiEnhanced: result.aiEnhanced
+      };
+      
+      setMessages([...messages, templateMessage]);
+      
+      // フォームをリセット
+      setShowBusinessForm(false);
+      setBusinessDescription('');
+    } catch (error) {
+      console.error('テンプレート生成エラー:', error);
+      const errorMessage = {
+        role: 'system',
+        content: 'テンプレート生成中にエラーが発生しました。しばらく経ってからもう一度お試しください。'
+      };
+      setMessages([...messages, errorMessage]);
+    } finally {
+      setGeneratingTemplate(false);
+    }
   };
 
   // 補助金情報のリストをテーブル形式に変換する関数
@@ -293,7 +428,19 @@ function App() {
           // 説明文があれば、それを保持
           const description = content.substring(listStart).trim();
           
-          return [beforeList, tableHtml, description].filter(Boolean).join('');
+          // AI拡張テンプレート作成ボタンを追加
+          const actionButton = `
+            <div class="action-button-container">
+              <button 
+                class="create-application-button" 
+                onclick="document.getElementById('createTemplateBtn').click()"
+              >
+                AI申請書テンプレート作成
+              </button>
+            </div>
+          `;
+          
+          return [beforeList, tableHtml, actionButton, description].filter(Boolean).join('');
         }
       }
     }
@@ -332,7 +479,10 @@ function App() {
               {message.applicationText && (
                 <div className="application-form-container">
                   <div className="application-form-header">
-                    <h3>補助金申請書テンプレート</h3>
+                    <h3>
+                      補助金申請書テンプレート
+                      {message.aiEnhanced && <span className="ai-enhanced-tag">AI拡張</span>}
+                    </h3>
                     <button 
                       className="copy-button"
                       onClick={() => copyToClipboard(message.applicationText)}
@@ -390,18 +540,74 @@ function App() {
           <div ref={messageEndRef} />
         </div>
         
+        {/* 補助金申請書作成フォーム */}
+        {showBusinessForm && (
+          <div className="business-form-overlay">
+            <div className="business-form-container">
+              <h3>AI拡張テンプレート作成</h3>
+              <p>より具体的な申請書テンプレートを生成するために、事業内容や企業情報を入力してください：</p>
+              
+              <textarea
+                className="business-description-input"
+                value={businessDescription}
+                onChange={(e) => setBusinessDescription(e.target.value)}
+                placeholder="例: IT企業として、クラウドサービスの開発・運用を行っています。従業員10名、年商5000万円。今回、AI機能を追加したサービス展開を計画しています。"
+                rows={5}
+              />
+              
+              <div className="business-form-actions">
+                <button 
+                  className="cancel-button" 
+                  onClick={handleCancelBusinessForm}
+                  disabled={generatingTemplate}
+                >
+                  キャンセル
+                </button>
+                <button 
+                  className="submit-button" 
+                  onClick={handleGenerateAITemplate}
+                  disabled={generatingTemplate}
+                >
+                  {generatingTemplate ? '生成中...' : 'テンプレート生成'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <form className="message-form" onSubmit={handleSendMessage}>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="メッセージを入力してください..."
-            disabled={loading}
-          />
-          <button type="submit" disabled={loading || input.trim() === ''}>
-            送信
-          </button>
+          {/* 補助金申請文章生成ボタン */}
+          <div className="subsidy-button-container">
+            <button 
+              className="generate-subsidy-button" 
+              onClick={handleCreateApplication}
+              disabled={!currentSubsidyInfo || loading || generatingTemplate}
+              type="button"
+            >
+              補助金申請文章を生成する
+            </button>
+          </div>
+
+          <div className="input-container">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="メッセージを入力してください..."
+              disabled={loading}
+            />
+            <button type="submit" disabled={loading || input.trim() === ''}>
+              送信
+            </button>
+          </div>
         </form>
+        
+        {/* 隠れたボタン - JavaScriptからのクリックイベント用 */}
+        <button 
+          id="createTemplateBtn" 
+          style={{ display: 'none' }} 
+          onClick={handleCreateApplication}
+        />
       </div>
     </div>
   );

@@ -1,123 +1,104 @@
+"""
+補助金申請書類生成ツール
+"""
+
+import os
 import re
-import datetime
-from typing import Dict, Any, Optional
+import json
+import logging
+from typing import Dict, Any
+from tools.common_utils import format_currency_ja, format_date_ja, generate_application_text
+from services.assistant_manager_service import AssistantManagerService
+from azure.ai.projects import AIProjectClient
 
-def format_currency_ja(amount: int) -> str:
+# ロガーの設定
+logger = logging.getLogger(__name__)
+
+def request_ai_content(subsidy_info: Dict[str, Any], business_description: str) -> Dict[str, str]:
     """
-    金額を日本語表記にフォーマットする
+    Azure AI Agent Serviceを使用して申請書の内容を生成する
     
     Args:
-        amount: 数値（円）
+        subsidy_info: 補助金情報の辞書
+        business_description: ビジネスの簡単な説明
         
     Returns:
-        フォーマットされた金額文字列
-    """
-    if amount >= 100000000:  # 1億円以上
-        value = amount / 100000000
-        return f"{value:,.0f}億円"
-    elif amount >= 10000:  # 1万円以上
-        value = amount / 10000
-        return f"{value:,.0f}万円"
-    else:
-        return f"{amount:,}円"
+        生成された申請書コンテンツを含む辞書
     
-def format_date_ja(date_str: Optional[str]) -> str:
+    Raises:
+        Exception: AIサービスとの通信エラー、または応答解析エラー時
     """
-    ISO形式の日付文字列を「YYYY年MM月DD日」形式にフォーマットする
-    
-    Args:
-        date_str: ISO形式の日付文字列（例: 2024-04-01T10:00:00Z）
-        
-    Returns:
-        日本語形式の日付文字列
-    """
-    if not date_str:
-        return "情報なし"
-    
     try:
-        # ISO形式の日付文字列をdatetimeオブジェクトに変換
-        date_obj = datetime.datetime.fromisoformat(date_str.replace('Z', '+00:00'))
-        # JSTタイムゾーンを考慮して日本時間に調整 (UTC+9)
-        date_obj = date_obj + datetime.timedelta(hours=9)
-        # 「YYYY年MM月DD日」形式にフォーマット
-        return date_obj.strftime("%Y年%m月%d日")
-    except (ValueError, TypeError):
-        return "無効な日付"
+        # AIProjectClientの初期化
+        project_id = os.getenv("AZURE_AI_PROJECT_ID")
+        api_key = os.getenv("AZURE_AI_API_KEY")
+        endpoint = os.getenv("AZURE_AI_ENDPOINT")
 
-def generate_application_text(subsidy_info: Dict[str, Any]) -> str:
-    """
-    補助金情報から申請書用のテキストを生成する
-    
-    Args:
-        subsidy_info: 補助金の情報を含む辞書
+        if not all([project_id, api_key, endpoint]):
+            raise Exception("必要な環境変数が設定されていません。AZURE_AI_PROJECT_ID, AZURE_AI_API_KEY, AZURE_AI_ENDPOINTを設定してください。")
+
+        project_client = AIProjectClient(endpoint=endpoint, api_key=api_key)
         
-    Returns:
-        申請書用のテキスト
-    """
-    # タイトル
-    title = subsidy_info.get("title", "不明な補助金")
-    
-    # 申請期間の処理
-    start_date = format_date_ja(subsidy_info.get("acceptance_start_datetime"))
-    end_date = format_date_ja(subsidy_info.get("acceptance_end_datetime"))
-    
-    if start_date != "情報なし" and end_date != "情報なし" and start_date != "無効な日付" and end_date != "無効な日付":
-        application_period = f"{start_date}～{end_date}"
-    else:
-        application_period = "情報なし"
-    
-    # 対象地域
-    target_area = subsidy_info.get("target_area_search", "情報なし")
-    
-    # 補助上限額
-    max_limit = subsidy_info.get("subsidy_max_limit")
-    if max_limit is not None:
-        max_limit_str = format_currency_ja(max_limit)
-    else:
-        max_limit_str = "情報なし"
-    
-    # 従業員数制限
-    employee_limit = subsidy_info.get("target_number_of_employees", "情報なし")
-    
-    # テキスト生成
-    application_text = f"""【申請書類：{title}】
+        # AIエージェントサービスのインスタンスを取得
+        service = AssistantManagerService(project_client)
+        
+        # AIエージェントに送信するプロンプトを構築
+        prompt = f"""
+補助金申請書の主要セクションの内容を生成してください。以下の補助金情報とビジネス概要に基づいて、申請に適した内容を作成してください。
 
-■基本情報
-申請期間：{application_period}
-対象地域：{target_area}
-補助上限額：{max_limit_str}
-"""
+## 補助金情報
+- 名称: {subsidy_info.get('title', '不明')}
+- 概要: {subsidy_info.get('summary', '情報なし')}
+- 対象分野: {subsidy_info.get('target_field', '情報なし')}
+- 対象者: {subsidy_info.get('target_type', '情報なし')}
+- 補助上限額: {format_currency_ja(subsidy_info.get('subsidy_max_limit', 0)) if subsidy_info.get('subsidy_max_limit') is not None else '情報なし'}
 
-    # 従業員数制限があれば追加
-    if employee_limit != "情報なし":
-        application_text += f"従業員数制限：{employee_limit}\n"
+## ビジネス概要
+{business_description}
+
+以下の各セクションの内容を、明確かつ説得力のある形で日本語で生成してください：
+
+1. application_reason: 申請理由（事業の現状と課題、補助金活用の目的）
+2. business_plan: 事業計画の概要（実現可能性、革新性、市場性、社会的意義）
+3. implementation_structure: 実施体制（担当者の役割や外部との連携）
+4. schedule: 実施スケジュール（主要なマイルストーン）
+5. budget_plan: 予算計画（主要な費目と金額）
+6. expected_effects: 期待される効果（定量的・定性的な効果）
+
+それぞれのセクションは具体的かつ簡潔に、150字程度で記述してください。JSONフォーマットで返答してください。
+        """
+        
+        # AIエージェントにリクエストを送信
+        response = service.process_openapi_spec(prompt)
+        
+        # 応答からJSON部分を抽出して解析
+        json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
+        if json_match:
+            content_json = json_match.group(1)
+            return json.loads(content_json)
+        
+        # JSON形式でない場合、テキスト全体を解析
+        try:
+            return json.loads(response)
+        except json.JSONDecodeError:
+            # JSONとして解析できない場合は、手動でパースを試みる
+            result = {}
+            sections = ["application_reason", "business_plan", "implementation_structure", 
+                       "schedule", "budget_plan", "expected_effects"]
+            
+            for section in sections:
+                pattern = rf"{section}[:：]\s*(.*?)(?=\n\n|\Z)"
+                match = re.search(pattern, response, re.DOTALL)
+                if match:
+                    result[section] = match.group(1).strip()
+                else:
+                    result[section] = f"{section}の情報は生成できませんでした。"
+            
+            return result
     
-    # 申請理由のテンプレート
-    application_text += """
-■申請理由：
-[ここに補助金申請の具体的な理由を記入してください。例：
-・事業の現状と課題
-・補助金を活用した事業計画の概要
-・期待される効果や成果
-・予算計画の概要]
-
-■事業計画概要：
-[ここに具体的な事業計画を記入してください。計画の実現可能性、革新性、市場性、社会的意義などを明確に説明すると効果的です。]
-
-■実施体制：
-[ここに事業実施体制について記入してください。担当者の役割や外部との連携体制などを含めると良いでしょう。]
-
-■スケジュール：
-[ここに事業の実施スケジュールを記入してください。マイルストーンとなる重要な日程も含めると良いでしょう。]
-
-■予算計画：
-[ここに予算計画の詳細を記入してください。各費目ごとの金額と、その積算根拠を明確に示すことが重要です。]
-
-■期待される効果：
-[ここに補助金による事業実施で期待される具体的な効果を記入してください。定量的な指標と定性的な効果の両方を含めると良いでしょう。]
-"""
-    
-    return application_text
+    except Exception as e:
+        logger.error(f"AI content generation error: {str(e)}")
+        raise Exception(f"AIコンテンツ生成エラー: {str(e)}")
 
 class ApplicationFormGenerator:
     """
@@ -139,3 +120,54 @@ class ApplicationFormGenerator:
             申請書用のテキスト
         """
         return self.generate_application_text(subsidy_info)
+    
+    def generate_ai_enhanced(self, subsidy_info: Dict[str, Any], business_description: str) -> str:
+        """
+        AIを活用して補助金申請書のテキストを生成する
+        
+        Args:
+            subsidy_info: 補助金の情報を含む辞書
+            business_description: ビジネスの簡単な説明
+            
+        Returns:
+            AI拡張された申請書テキスト
+        """
+        # 基本的な申請書テンプレートを生成
+        base_template = self.generate_application_text(subsidy_info)
+        
+        try:
+            # AIサービスから内容を取得
+            ai_content = request_ai_content(subsidy_info, business_description)
+            
+            # テンプレートを拡張
+            enhanced_template = base_template.replace(
+                "■申請理由：\n[ここに補助金申請の具体的な理由を記入してください。例：\n・事業の現状と課題\n・補助金を活用した事業計画の概要\n・期待される効果や成果\n・予算計画の概要]",
+                f"■申請理由：\n{ai_content.get('application_reason', '情報を生成できませんでした。')}"
+            ).replace(
+                "■事業計画概要：\n[ここに具体的な事業計画を記入してください。計画の実現可能性、革新性、市場性、社会的意義などを明確に説明すると効果的です。]",
+                f"■事業計画概要：\n{ai_content.get('business_plan', '情報を生成できませんでした。')}"
+            ).replace(
+                "■実施体制：\n[ここに事業実施体制について記入してください。担当者の役割や外部との連携体制などを含めると良いでしょう。]",
+                f"■実施体制：\n{ai_content.get('implementation_structure', '情報を生成できませんでした。')}"
+            ).replace(
+                "■スケジュール：\n[ここに事業の実施スケジュールを記入してください。マイルストーンとなる重要な日程も含めると良いでしょう。]",
+                f"■スケジュール：\n{ai_content.get('schedule', '情報を生成できませんでした。')}"
+            ).replace(
+                "■予算計画：\n[ここに予算計画の詳細を記入してください。各費目ごとの金額と、その積算根拠を明確に示すことが重要です。]",
+                f"■予算計画：\n{ai_content.get('budget_plan', '情報を生成できませんでした。')}"
+            ).replace(
+                "■期待される効果：\n[ここに補助金による事業実施で期待される具体的な効果を記入してください。定量的な指標と定性的な効果の両方を含めると良いでしょう。]",
+                f"■期待される効果：\n{ai_content.get('expected_effects', '情報を生成できませんでした。')}"
+            )
+            
+            # ヘッダーに生成AIを使用した旨を追加
+            enhanced_template += "\n\n※このテンプレートは生成AIによって作成されました。内容を確認し、必要に応じて修正してください。"
+            
+            return enhanced_template
+            
+        except Exception as e:
+            logger.error(f"Failed to generate AI-enhanced application: {str(e)}")
+            
+            # エラーメッセージを追加
+            error_template = base_template + "\n\n※AI拡張機能は現在利用できません。基本テンプレートをご利用ください。"
+            return error_template

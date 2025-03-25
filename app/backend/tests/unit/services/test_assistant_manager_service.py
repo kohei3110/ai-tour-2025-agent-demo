@@ -205,3 +205,75 @@ class TestAssistantManagerService:
         # 検証
         assert result == {"response": "No response found"}
         mock_project_client.agents.delete_agent.assert_called_once()
+    
+    # 新規テスト: process_message メソッドのテスト
+    def test_process_message_success(self, service, mock_project_client):
+        """process_messageメソッドが正常にメッセージを処理できることをテスト"""
+        # 実行成功のモック
+        run = Mock()
+        type(run).status = PropertyMock(side_effect=lambda: RunStatus.FAILED.__class__("completed"))
+        mock_project_client.agents.create_and_process_run.return_value = run
+        
+        # メッセージリストのモック
+        message = Mock()
+        message.role = MessageRole.AGENT
+        message_content = Mock(spec=MessageTextContent)
+        message_content.text.value = "This is a test response"
+        message.content = [message_content]
+        messages = Mock()
+        messages.data = [message]
+        mock_project_client.agents.list_messages.return_value = messages
+        
+        # メソッド実行
+        result = service.process_message("Test prompt")
+        
+        # 検証
+        assert result == "This is a test response"
+        mock_project_client.agents.create_agent.assert_called_once()
+        mock_project_client.agents.create_thread.assert_called_once()
+        mock_project_client.agents.create_message.assert_called_once()
+        mock_project_client.agents.create_and_process_run.assert_called_once()
+        mock_project_client.agents.delete_agent.assert_called_once()
+    
+    def test_process_message_run_failed(self, service, mock_project_client):
+        """エージェント実行が失敗した場合のprocess_messageメソッドの挙動をテスト"""
+        # 実行失敗のモック
+        run = Mock()
+        type(run).status = PropertyMock(return_value=RunStatus.FAILED)
+        run.last_error = "Test error"
+        mock_project_client.agents.create_and_process_run.return_value = run
+        
+        # メソッド実行
+        result = service.process_message("Test prompt")
+        
+        # 検証
+        assert result == "Error: Test error"
+        mock_project_client.agents.delete_agent.assert_called_once()
+    
+    def test_process_message_no_response(self, service, mock_project_client):
+        """エージェントから応答がない場合のprocess_messageメソッドの挙動をテスト"""
+        # 実行成功のモック
+        run = Mock()
+        type(run).status = PropertyMock(side_effect=lambda: RunStatus.FAILED.__class__("completed"))
+        mock_project_client.agents.create_and_process_run.return_value = run
+        
+        # 空のメッセージリストのモック
+        messages = Mock()
+        messages.data = []
+        mock_project_client.agents.list_messages.return_value = messages
+        
+        # メソッド実行
+        result = service.process_message("Test prompt")
+        
+        # 検証
+        assert result == "No response found"
+        mock_project_client.agents.delete_agent.assert_called_once()
+    
+    @patch.object(AssistantManagerService, "_create_basic_agent", side_effect=Exception("Unexpected error"))
+    def test_process_message_unexpected_exception(self, mock_create_agent, service):
+        """予期しない例外が発生した場合のprocess_messageメソッドの挙動をテスト"""
+        # メソッド実行
+        result = service.process_message("Test prompt")
+        
+        # 検証
+        assert result == "Error processing request: Unexpected error"
