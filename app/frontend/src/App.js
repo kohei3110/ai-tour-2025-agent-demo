@@ -68,7 +68,6 @@ function App() {
     
     // キーワードを拡張
     const subsidyKeywords = ['補助金', '奨励金', '助成金', '支援金', '支援事業', '給付金'];
-    const periodKeywords = ['採択期間', '募集期間', '応募期間', '開始', '終了', '締切', '申請期限'];
     
     let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
     
