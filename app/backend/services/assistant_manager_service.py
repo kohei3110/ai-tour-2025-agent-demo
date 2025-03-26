@@ -7,6 +7,7 @@ import logging
 from typing import Dict, Any, Optional
 from azure.ai.projects import AIProjectClient
 from tools.common_utils import generate_application_text
+from models.models import MessageRequest
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -65,15 +66,15 @@ class AssistantManagerService:
             logger.error(f"Failed to create OpenAPI tool: {str(e)}")
             raise
 
-    def process_openapi_spec(self, message: str) -> str:
+    async def process_openapi_spec(self, request: MessageRequest) -> Dict[str, str]:
         """
         OpenAPIスペックを処理し、応答を生成する
         
         Args:
-            message: ユーザーからのメッセージ
+            request: ユーザーからのメッセージリクエスト
             
         Returns:
-            生成された応答
+            生成された応答を含む辞書
         """
         try:
             # エージェントがなければ作成
@@ -95,7 +96,7 @@ class AssistantManagerService:
             self.project_client.agents.create_message(
                 thread_id=thread.id,
                 role="user",
-                content=message
+                content=request.message
             )
             
             # エージェントの実行
@@ -105,18 +106,77 @@ class AssistantManagerService:
             )
             
             # エラー発生時の処理
-            if run.last_error:
+            if run.status != "completed" or run.last_error:
                 logger.error(f"Agent execution failed: {run.last_error}")
-                return f"エージェントの実行に失敗しました: {run.last_error}"
+                return {"error": f"Run failed: {run.last_error}"}
             
             # レスポンスの取得
             responses = self.project_client.agents.list_messages(thread_id=thread.id)
-            for response in responses:
+            for response in responses.data:
                 if response.role == "assistant":
-                    return response.content
+                    for content in response.content:
+                        if hasattr(content, 'text') and hasattr(content.text, 'value'):
+                            return {"response": content.text.value}
             
-            return "No response found"
+            return {"response": "No response found"}
             
         except Exception as e:
             logger.error(f"Failed to process OpenAPI spec: {str(e)}")
-            return f"エラーが発生しました: {str(e)}"
+            return {"error": f"Error processing request: {str(e)}"}
+
+    def process_message(self, prompt: str) -> str:
+        """
+        一般的なメッセージ処理の実装
+        
+        Args:
+            prompt: ユーザーからのプロンプト
+            
+        Returns:
+            生成された応答
+        """
+        try:
+            # 一時的なエージェントの作成
+            agent = self.project_client.agents.create_agent(
+                name="テキスト生成エージェント",
+                instructions=f"ユーザーのプロンプトに対して適切なテキストを生成してください。",
+                description="テキスト生成エージェント"
+            )
+            
+            try:
+                # スレッドの作成
+                thread = self.project_client.agents.create_thread()
+                
+                # メッセージの作成
+                self.project_client.agents.create_message(
+                    thread_id=thread.id,
+                    role="user",
+                    content=prompt
+                )
+                
+                # エージェントの実行
+                run = self.project_client.agents.create_and_process_run(
+                    agent_id=agent.id,
+                    thread_id=thread.id
+                )
+                
+                # エラー発生時の処理
+                if run.status != "completed" or run.last_error:
+                    return f"Error: {run.last_error}"
+                
+                # レスポンスの取得
+                responses = self.project_client.agents.list_messages(thread_id=thread.id)
+                for response in responses.data:
+                    if response.role == "assistant":
+                        for content in response.content:
+                            if hasattr(content, 'text') and hasattr(content.text, 'value'):
+                                return content.text.value
+                
+                return "No response found"
+                
+            finally:
+                # エージェントの削除
+                self.project_client.agents.delete_agent(agent.id)
+                
+        except Exception as e:
+            logger.error(f"Failed to process message: {str(e)}")
+            return f"Error processing request: {str(e)}"
