@@ -116,7 +116,17 @@ class AssistantManagerService:
                 if response.role == "assistant":
                     for content in response.content:
                         if hasattr(content, 'text') and hasattr(content.text, 'value'):
-                            return {"response": content.text.value}
+                            try:
+                                # 応答が直接シリアライズ可能か確認
+                                response_text = content.text.value
+                                # オブジェクトの場合は文字列に変換
+                                if isinstance(response_text, object) and not isinstance(response_text, (str, int, float, bool, list, dict, type(None))):
+                                    response_text = str(response_text)
+                                return {"response": response_text}
+                            except TypeError as e:
+                                # JSONシリアライズエラー
+                                logger.error(f"JSON serialization error: {str(e)}")
+                                return {"error": f"Response could not be serialized: {str(e)}"}
             
             return {"response": "No response found"}
             

@@ -277,3 +277,44 @@ class TestAssistantManagerService:
         
         # 検証
         assert result == "Error processing request: Unexpected error"
+    
+    # TS-009: JSONシリアライズエラーテスト
+    @pytest.mark.asyncio
+    @patch.object(AssistantManagerService, "load_openapi_spec")
+    @patch.object(AssistantManagerService, "create_openapi_tool")
+    @patch("json.dumps", side_effect=TypeError("Object of type object is not JSON serializable"))
+    async def test_process_openapi_spec_json_serialization_error(self, mock_json_dumps, mock_create_tool, mock_load_spec, service, mock_project_client):
+        """JSONシリアライズできないオブジェクトが含まれている場合のprocess_openapi_specメソッドの挙動をテスト"""
+        # モックの設定
+        mock_load_spec.return_value = {"spec": "value"}
+        mock_tool = Mock()
+        mock_create_tool.return_value = mock_tool
+        
+        # 非シリアライズ可能オブジェクトを含む応答を作成
+        non_serializable_obj = object()  # JSONシリアライズできないオブジェクト
+        
+        # 実行成功のモック
+        run = Mock()
+        type(run).status = PropertyMock(side_effect=lambda: RunStatus.FAILED.__class__("completed"))
+        run.last_error = None
+        mock_project_client.agents.create_and_process_run.return_value = run
+        
+        # メッセージリストのモック（非シリアライズ可能なオブジェクトを含む）
+        message = Mock()
+        message.role = MessageRole.AGENT
+        message_content = Mock(spec=MessageTextContent)
+        message_content.text.value = non_serializable_obj  # ここでJSONシリアライズ不可能なオブジェクトを設定
+        message.content = [message_content]
+        messages = Mock()
+        messages.data = [message]
+        mock_project_client.agents.list_messages.return_value = messages
+        
+        # リクエスト作成
+        request = MessageRequest(message="Test message")
+        
+        # メソッド実行
+        result = await service.process_openapi_spec(request)
+        
+        # 検証 - エラーメッセージが正しく返されることを確認
+        assert "error" in result
+        assert "not JSON serializable" in result["error"]
