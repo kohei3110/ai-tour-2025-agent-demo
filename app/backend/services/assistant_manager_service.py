@@ -3,6 +3,7 @@ AI アシスタントマネージャーサービス
 """
 
 import json
+import jsonref
 import logging
 from typing import Dict, Any, Optional
 from azure.ai.projects import AIProjectClient
@@ -41,7 +42,8 @@ class AssistantManagerService:
         """
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+                openapi_spec = jsonref.loads(f.read())
+                return openapi_spec
         except FileNotFoundError:
             logger.error(f"OpenAPI specification file not found: {file_path}")
             raise
