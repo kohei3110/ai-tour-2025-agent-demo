@@ -10,6 +10,11 @@ from typing import Dict, Any
 from tools.common_utils import format_currency_ja, format_date_ja, generate_application_text
 from services.assistant_manager_service import AssistantManagerService
 from azure.ai.projects import AIProjectClient
+from azure.identity import DefaultAzureCredential
+
+project_client: AIProjectClient = AIProjectClient.from_connection_string(
+    credential=DefaultAzureCredential(), conn_str=os.environ["PROJECT_CONNECTION_STRING"]
+)
 
 # ロガーの設定
 logger = logging.getLogger(__name__)
@@ -28,18 +33,7 @@ def request_ai_content(subsidy_info: Dict[str, Any], business_description: str) 
     Raises:
         Exception: AIサービスとの通信エラー、または応答解析エラー時
     """
-    try:
-        # AIProjectClientの初期化
-        project_id = os.getenv("AZURE_AI_PROJECT_ID")
-        api_key = os.getenv("AZURE_AI_API_KEY")
-        endpoint = os.getenv("AZURE_AI_ENDPOINT")
-
-        if not all([project_id, api_key, endpoint]):
-            raise Exception("必要な環境変数が設定されていません。AZURE_AI_PROJECT_ID, AZURE_AI_API_KEY, AZURE_AI_ENDPOINTを設定してください。")
-
-        project_client = AIProjectClient(endpoint=endpoint, api_key=api_key)
-        
-        # AIエージェントサービスのインスタンスを取得
+    try:        # AIエージェントサービスのインスタンスを取得
         service = AssistantManagerService(project_client)
         
         # AIエージェントに送信するプロンプトを構築
@@ -159,6 +153,17 @@ class ApplicationFormGenerator:
                 "■期待される効果：\n[ここに補助金による事業実施で期待される具体的な効果を記入してください。定量的な指標と定性的な効果の両方を含めると良いでしょう。]",
                 f"■期待される効果：\n{ai_content.get('expected_effects', '情報を生成できませんでした。')}"
             )
+            
+            # 補助金情報から重要キーワードを抽出してテンプレートに追加
+            keywords = []
+            if subsidy_info.get('target_field'):
+                keywords.append(subsidy_info.get('target_field'))
+            if subsidy_info.get('target_type'):
+                keywords.append(subsidy_info.get('target_type'))
+            
+            # キーワードがあれば追加
+            if keywords:
+                enhanced_template += f"\n\n※この申請書は以下のキーワードを考慮して作成されています: {', '.join(keywords)}"
             
             # ヘッダーに生成AIを使用した旨を追加
             enhanced_template += "\n\n※このテンプレートは生成AIによって作成されました。内容を確認し、必要に応じて修正してください。"
