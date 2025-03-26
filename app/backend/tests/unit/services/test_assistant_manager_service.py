@@ -318,3 +318,45 @@ class TestAssistantManagerService:
         # 検証 - エラーメッセージが正しく返されることを確認
         assert "error" in result
         assert "not JSON serializable" in result["error"]
+    
+    # TS-010: OpenAPIツールをエージェントに追加するテスト
+    @pytest.mark.asyncio
+    @patch.object(AssistantManagerService, "load_openapi_spec")
+    @patch.object(AssistantManagerService, "create_openapi_tool")
+    async def test_process_openapi_spec_with_tool(self, mock_create_tool, mock_load_spec, service, mock_project_client):
+        """OpenAPIツールがエージェントに追加されることをテスト"""
+        # モックの設定
+        mock_load_spec.return_value = {"spec": "value"}
+        mock_tool = Mock()
+        mock_create_tool.return_value = mock_tool
+        
+        # 実行成功のモック
+        run = Mock()
+        type(run).status = PropertyMock(side_effect=lambda: RunStatus.FAILED.__class__("completed"))
+        mock_project_client.agents.create_and_process_run.return_value = run
+        
+        # メッセージリストのモック
+        message = Mock()
+        message.role = MessageRole.AGENT
+        message_content = Mock(spec=MessageTextContent)
+        message_content.text.value = "This is a test response"
+        message.content = [message_content]
+        messages = Mock()
+        messages.data = [message]
+        mock_project_client.agents.list_messages.return_value = messages
+        
+        # リクエスト作成
+        request = MessageRequest(message="補助金について教えて")
+        
+        # メソッド実行
+        result = await service.process_openapi_spec(request)
+        
+        # 検証
+        assert result == {"response": "This is a test response"}
+        # エージェント作成時にツールが追加されたことを確認
+        mock_project_client.agents.create_agent.assert_called_once()
+        # ツールが追加されているはずなので、呼び出し引数にツールが含まれていることを確認
+        # create_agentの引数を取得
+        args, kwargs = mock_project_client.agents.create_agent.call_args
+        assert "tools" in kwargs
+        assert mock_tool in kwargs["tools"]

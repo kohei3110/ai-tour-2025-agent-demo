@@ -77,15 +77,23 @@ class AssistantManagerService:
             生成された応答を含む辞書
         """
         try:
+            # OpenAPIスペックの読み込み
+            spec_path = "tools/actions/specs/swagger_subsidies.json"
+            spec = self.load_openapi_spec(spec_path)
+            
+            # OpenAPIツールの作成
+            openapi_tool = self.create_openapi_tool(spec)
+            
             # エージェントがなければ作成
             if not self._agent_id:
-                # エージェントの作成
+                # エージェントの作成（OpenAPIツールを追加）
                 agent = self.project_client.agents.create_agent(
                     name="補助金情報案内AIエージェント",
                     instructions="""あなたは補助金申請のエキスパートアシスタントです。
 ユーザーからの質問に対して、OpenAPIツールを使用して補助金情報を検索し、
 わかりやすく回答してください。""",
-                    description="補助金情報案内AIエージェント"
+                    description="補助金情報案内AIエージェント",
+                    tools=[openapi_tool]  # ツールを追加
                 )
                 self._agent_id = agent.id
 
