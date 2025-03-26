@@ -2,6 +2,9 @@ import unittest
 from unittest.mock import patch, MagicMock
 import datetime
 import json
+import pytest
+from unittest.mock import Mock, patch, AsyncMock
+import logging
 
 # Mock the azure.ai.projects module before importing the application_doc_generator_tool
 mock_assistant = MagicMock()
@@ -274,3 +277,143 @@ expected_effects: テスト効果
                 request_ai_content(subsidy_info, business_description)
 
         self.assertIn("AIコンテンツ生成エラー", str(context.exception))
+
+# テスト用データ
+@pytest.fixture
+def sample_subsidy_info():
+    return {
+        "title": "中小企業デジタル化支援補助金",
+        "summary": "中小企業のデジタル化を支援する補助金です",
+        "target_field": "IT・情報通信",
+        "target_type": "中小企業",
+        "subsidy_max_limit": 1000000
+    }
+
+@pytest.fixture
+def sample_business_description():
+    return "当社は動物病院向けのクラウド型電子カルテシステムを開発しています。"
+
+@pytest.fixture
+def mock_ai_response():
+    return {
+        "application_reason": "当社のクラウド型電子カルテシステムは、動物病院のデジタル化を促進します。",
+        "business_plan": "全国の動物病院に向けたクラウド型電子カルテの展開を計画しています。",
+        "implementation_structure": "開発部門5名とサポート部門3名の体制で実施します。",
+        "schedule": "2025年Q2にベータ版リリース、Q3に本格展開を予定しています。",
+        "budget_plan": "システム開発費600万円、サーバー構築費200万円、マーケティング費用200万円を予定。",
+        "expected_effects": "導入病院の業務効率が30%向上し、医療ミスを50%削減できると見込んでいます。"
+    }
+
+class TestApplicationDocGeneratorTool:
+    
+    @pytest.mark.asyncio
+    @patch('tools.actions.application_doc_generator_tool.AssistantManagerService')
+    async def test_request_ai_content_success(self, mock_service_class, sample_subsidy_info, sample_business_description, mock_ai_response):
+        """AIサービスから正常にコンテンツを取得できる場合のテスト"""
+        # AIサービスのモックを設定
+        mock_service_instance = AsyncMock()
+        mock_service_class.return_value = mock_service_instance
+        
+        # JSONレスポンスをモック
+        mock_service_instance.process_openapi_spec.return_value = json.dumps(mock_ai_response)
+        
+        # 関数を実行
+        result = await request_ai_content(sample_subsidy_info, sample_business_description)
+        
+        # 検証
+        assert result == mock_ai_response
+        mock_service_instance.process_openapi_spec.assert_called_once()
+        # プロンプトにビジネス概要と補助金情報が含まれていることを確認
+        prompt_arg = mock_service_instance.process_openapi_spec.call_args[0][0]
+        assert sample_business_description in prompt_arg
+        assert sample_subsidy_info["title"] in prompt_arg
+    
+    @pytest.mark.asyncio
+    @patch('tools.actions.application_doc_generator_tool.AssistantManagerService')
+    async def test_request_ai_content_with_code_block(self, mock_service_class, sample_subsidy_info, sample_business_description, mock_ai_response):
+        """マークダウンコードブロック形式のJSONレスポンスを処理できることをテスト"""
+        # AIサービスのモックを設定
+        mock_service_instance = AsyncMock()
+        mock_service_class.return_value = mock_service_instance
+        
+        # マークダウンコードブロック形式のJSONレスポンスをモック
+        json_response = f"```json\n{json.dumps(mock_ai_response, indent=2)}\n```"
+        mock_service_instance.process_openapi_spec.return_value = json_response
+        
+        # 関数を実行
+        result = await request_ai_content(sample_subsidy_info, sample_business_description)
+        
+        # 検証
+        assert result == mock_ai_response
+    
+    @pytest.mark.asyncio
+    @patch('tools.actions.application_doc_generator_tool.AssistantManagerService')
+    @patch('tools.actions.application_doc_generator_tool.logger')
+    async def test_request_ai_content_exception(self, mock_logger, mock_service_class, sample_subsidy_info, sample_business_description):
+        """例外が発生した場合のテスト"""
+        # AIサービスのモックを設定して例外を発生させる
+        mock_service_instance = AsyncMock()
+        mock_service_class.return_value = mock_service_instance
+        mock_service_instance.process_openapi_spec.side_effect = Exception("Test error")
+        
+        # 関数を実行し、例外が再発生することを確認
+        with pytest.raises(Exception) as excinfo:
+            await request_ai_content(sample_subsidy_info, sample_business_description)
+        
+        # 例外メッセージを検証
+        assert "AIコンテンツ生成エラー" in str(excinfo.value)
+        # ロギングを検証
+        mock_logger.error.assert_called_once()
+
+class TestApplicationFormGenerator:
+    
+    def test_generate(self, sample_subsidy_info):
+        """基本的な申請書テキスト生成が機能することをテスト"""
+        generator = ApplicationFormGenerator()
+        result = generator.generate(sample_subsidy_info)
+        
+        # 申請書テキストに補助金情報が含まれているか確認
+        assert sample_subsidy_info["title"] in result
+        assert "申請理由" in result
+        assert "事業計画概要" in result
+    
+    @pytest.mark.asyncio
+    @patch('tools.actions.application_doc_generator_tool.request_ai_content')
+    async def test_generate_ai_enhanced(self, mock_request_ai, sample_subsidy_info, sample_business_description, mock_ai_response):
+        """AI拡張された申請書テキスト生成が機能することをテスト"""
+        # モックを設定
+        mock_request_ai.return_value = mock_ai_response
+        
+        # 生成器のインスタンスを作成
+        generator = ApplicationFormGenerator()
+        
+        # AI拡張テキストを生成
+        result = await generator.generate_ai_enhanced(sample_subsidy_info, sample_business_description)
+        
+        # 検証
+        assert sample_subsidy_info["title"] in result
+        assert mock_ai_response["application_reason"] in result
+        assert mock_ai_response["business_plan"] in result
+        assert mock_ai_response["expected_effects"] in result
+        # AIによる生成物であることを示す文言があることを確認
+        assert "生成AIによって作成されました" in result
+    
+    @pytest.mark.asyncio
+    @patch('tools.actions.application_doc_generator_tool.request_ai_content')
+    @patch('tools.actions.application_doc_generator_tool.logger')
+    async def test_generate_ai_enhanced_error(self, mock_logger, mock_request_ai, sample_subsidy_info, sample_business_description):
+        """AI拡張失敗時に基本テンプレートが返されることをテスト"""
+        # モックを設定して例外を発生させる
+        mock_request_ai.side_effect = Exception("Test error")
+        
+        # 生成器のインスタンスを作成
+        generator = ApplicationFormGenerator()
+        
+        # AI拡張テキストを生成（エラーが発生するケース）
+        result = await generator.generate_ai_enhanced(sample_subsidy_info, sample_business_description)
+        
+        # 検証
+        assert sample_subsidy_info["title"] in result
+        assert "AI拡張機能は現在利用できません" in result
+        # ロギングを検証
+        mock_logger.error.assert_called_once()

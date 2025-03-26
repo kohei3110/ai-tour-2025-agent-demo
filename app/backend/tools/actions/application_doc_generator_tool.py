@@ -19,7 +19,7 @@ project_client: AIProjectClient = AIProjectClient.from_connection_string(
 # ロガーの設定
 logger = logging.getLogger(__name__)
 
-def request_ai_content(subsidy_info: Dict[str, Any], business_description: str) -> Dict[str, str]:
+async def request_ai_content(subsidy_info: Dict[str, Any], business_description: str) -> Dict[str, str]:
     """
     Azure AI Agent Serviceを使用して申請書の内容を生成する
     
@@ -63,7 +63,7 @@ def request_ai_content(subsidy_info: Dict[str, Any], business_description: str) 
         """
         
         # AIエージェントにリクエストを送信
-        response = service.process_openapi_spec(prompt)
+        response = await service.process_openapi_spec(prompt)
         
         # 応答からJSON部分を抽出して解析
         json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
@@ -115,7 +115,7 @@ class ApplicationFormGenerator:
         """
         return self.generate_application_text(subsidy_info)
     
-    def generate_ai_enhanced(self, subsidy_info: Dict[str, Any], business_description: str) -> str:
+    async def generate_ai_enhanced(self, subsidy_info: Dict[str, Any], business_description: str) -> str:
         """
         AIを活用して補助金申請書のテキストを生成する
         
@@ -130,8 +130,8 @@ class ApplicationFormGenerator:
         base_template = self.generate_application_text(subsidy_info)
         
         try:
-            # AIサービスから内容を取得
-            ai_content = request_ai_content(subsidy_info, business_description)
+            # AIサービスから内容を取得 (非同期関数を適切にawaitする)
+            ai_content = await request_ai_content(subsidy_info, business_description)
             
             # テンプレートを拡張
             enhanced_template = base_template.replace(
