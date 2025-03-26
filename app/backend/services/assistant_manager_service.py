@@ -117,16 +117,27 @@ class AssistantManagerService:
                     for content in response.content:
                         if hasattr(content, 'text') and hasattr(content.text, 'value'):
                             try:
-                                # 応答が直接シリアライズ可能か確認
+                                # 応答を取得
                                 response_text = content.text.value
-                                # オブジェクトの場合は文字列に変換
-                                if isinstance(response_text, object) and not isinstance(response_text, (str, int, float, bool, list, dict, type(None))):
+                                
+                                # JSON化できない複雑なオブジェクトは文字列に変換
+                                # isinstance(response_text, object)は全てのオブジェクトにマッチするため、
+                                # 基本型は個別に除外する必要がある
+                                if not isinstance(response_text, (str, int, float, bool, list, dict, type(None))):
                                     response_text = str(response_text)
+                                
+                                # 辞書や配列内の非シリアライズ可能なオブジェクトも処理
+                                if isinstance(response_text, dict):
+                                    response_text = self._ensure_serializable_dict(response_text)
+                                elif isinstance(response_text, list):
+                                    response_text = self._ensure_serializable_list(response_text)
+                                    
                                 return {"response": response_text}
                             except TypeError as e:
                                 # JSONシリアライズエラー
                                 logger.error(f"JSON serialization error: {str(e)}")
-                                return {"error": f"Response could not be serialized: {str(e)}"}
+                                # エラーメッセージを返す代わりに、応答テキストを文字列化して返す
+                                return {"response": f"Response received but could not be fully serialized: {str(content.text.value)}"}
             
             return {"response": "No response found"}
             
@@ -134,6 +145,55 @@ class AssistantManagerService:
             logger.error(f"Failed to process OpenAPI spec: {str(e)}")
             return {"error": f"Error processing request: {str(e)}"}
 
+    def _ensure_serializable_dict(self, data: dict) -> dict:
+        """辞書内の非シリアライズ可能なオブジェクトを文字列に変換する
+
+        Args:
+            data: 変換対象の辞書
+
+        Returns:
+            JSON シリアライズ可能な辞書
+        """
+        result = {}
+        for key, value in data.items():
+            # キーが文字列でない場合は文字列に変換
+            if not isinstance(key, str):
+                key = str(key)
+                
+            # 値を再帰的に処理
+            if isinstance(value, dict):
+                result[key] = self._ensure_serializable_dict(value)
+            elif isinstance(value, list):
+                result[key] = self._ensure_serializable_list(value)
+            elif not isinstance(value, (str, int, float, bool, type(None))):
+                # 基本型以外は文字列に変換
+                result[key] = str(value)
+            else:
+                result[key] = value
+        return result
+    
+    def _ensure_serializable_list(self, data: list) -> list:
+        """リスト内の非シリアライズ可能なオブジェクトを文字列に変換する
+
+        Args:
+            data: 変換対象のリスト
+
+        Returns:
+            JSON シリアライズ可能なリスト
+        """
+        result = []
+        for item in data:
+            if isinstance(item, dict):
+                result.append(self._ensure_serializable_dict(item))
+            elif isinstance(item, list):
+                result.append(self._ensure_serializable_list(item))
+            elif not isinstance(item, (str, int, float, bool, type(None))):
+                # 基本型以外は文字列に変換
+                result.append(str(item))
+            else:
+                result.append(item)
+        return result
+        
     def process_message(self, prompt: str) -> str:
         """
         一般的なメッセージ処理の実装
