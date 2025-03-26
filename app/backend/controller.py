@@ -61,7 +61,7 @@ async def generate_application_form(request: ApplicationFormRequest):
         
         # ビジネス概要が提供されている場合はAI拡張テンプレートを生成
         if request.business_description:
-            application_text = form_generator.generate_ai_enhanced(
+            application_text = await form_generator.generate_ai_enhanced(
                 request.subsidy_info, 
                 request.business_description
             )
