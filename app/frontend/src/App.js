@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { sendChatMessage, generateApplicationTemplate, generateMessage } from './services/api';
+import { sendChatMessage, generateApplicationTemplate } from './services/api';
 import './App.css';
 
 function App() {
@@ -71,7 +71,6 @@ function App() {
     const periodKeywords = ['採択期間', '募集期間', '応募期間', '開始', '終了', '締切', '申請期限'];
     
     let hasSubsidyInfo = subsidyKeywords.some(keyword => content.includes(keyword));
-    let hasPeriodInfo = periodKeywords.some(keyword => content.includes(keyword));
     
     if (hasSubsidyInfo) {  // 期間情報の有無に関わらず補助金情報を抽出
       // タイトル抽出を改善
