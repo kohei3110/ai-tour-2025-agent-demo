@@ -11,6 +11,7 @@ from tools.common_utils import format_currency_ja, format_date_ja, generate_appl
 from services.assistant_manager_service import AssistantManagerService
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
+from models.models import MessageRequest
 
 project_client: AIProjectClient = AIProjectClient.from_connection_string(
     credential=DefaultAzureCredential(), conn_str=os.environ["PROJECT_CONNECTION_STRING"]
@@ -33,7 +34,8 @@ async def request_ai_content(subsidy_info: Dict[str, Any], business_description:
     Raises:
         Exception: AIサービスとの通信エラー、または応答解析エラー時
     """
-    try:        # AIエージェントサービスのインスタンスを取得
+    try:
+        # AIエージェントサービスのインスタンスを取得
         service = AssistantManagerService(project_client)
         
         # AIエージェントに送信するプロンプトを構築
@@ -62,8 +64,12 @@ async def request_ai_content(subsidy_info: Dict[str, Any], business_description:
 それぞれのセクションは具体的かつ簡潔に、150字程度で記述してください。JSONフォーマットで返答してください。
         """
         
-        # AIエージェントにリクエストを送信
-        response = await service.process_openapi_spec(prompt)
+        # AIエージェントにリクエストを送信（MessageRequestオブジェクトに変換）
+        message_request = MessageRequest(message=prompt)
+        response_dict = await service.process_openapi_spec(message_request)
+        
+        # レスポンスから実際のテキスト内容を取得
+        response = response_dict.get("response", "")
         
         # 応答からJSON部分を抽出して解析
         json_match = re.search(r'```json\s*(.*?)\s*```', response, re.DOTALL)
